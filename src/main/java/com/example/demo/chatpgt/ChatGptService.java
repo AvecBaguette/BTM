@@ -73,9 +73,11 @@ public class ChatGptService {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(openAiApiKey);
         headers.setContentType(MediaType.APPLICATION_JSON);
-
-        // Prompt OpenAI to evaluate whether e2e tests are necessary
-        String prompt = "Analyze the following code content and determine if it warrants end-to-end (e2e) test cases. Only suggest e2e tests if there are interactive or functional components that users would interact with. If the content is only for styling, layout, or static appearance, then e2e tests are not needed. Answer with 'Yes' if e2e tests are needed and 'No' if not:\n\n" + fileContent;
+        // Prompt OpenAI to evaluate whether e2e tests or already existing code changes are necessary
+        String prompt = "Analyze the following code content to determine if it requires end-to-end (e2e) test cases." +
+                " Suggest e2e tests only if the code includes interactive or functional components that users interact with directly. " +
+                "If the content solely covers styling, layout, or static display, respond with 'No' as e2e tests are unnecessary." +
+                " Answer 'Yes' if e2e tests are needed and 'No' if not:\\n\\n" + fileContent;
 
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", "gpt-3.5-turbo");
@@ -151,7 +153,13 @@ public class ChatGptService {
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
-        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, new ParameterizedTypeReference<Map<String, Object>>() {});
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                apiUrl,
+                HttpMethod.POST,
+                entity,
+                new ParameterizedTypeReference<Map<String, Object>>() {
+                }
+        );
 
         Map<String, Object> choices = (Map<String, Object>) ((List<?>) response.getBody().get("choices")).get(0);
         String updatedTestCasesContent = (String) ((Map<String, Object>) choices.get("message")).get("content");
