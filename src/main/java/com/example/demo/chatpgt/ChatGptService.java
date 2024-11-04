@@ -1,6 +1,8 @@
 package com.example.demo.chatpgt;
 
+import com.example.demo.database.entities.ContractTestCase;
 import com.example.demo.database.entities.TestCase;
+import com.example.demo.database.repositories.ContractTestCaseRepository;
 import com.example.demo.database.repositories.TestCaseRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -20,10 +22,12 @@ public class ChatGptService {
 
     private final RestTemplate restTemplate;
     private final TestCaseRepository testCaseRepository;
+    private final ContractTestCaseRepository contractTestCaseRepository;
 
-    public ChatGptService(RestTemplate restTemplate, TestCaseRepository testCaseRepository) {
+    public ChatGptService(RestTemplate restTemplate, TestCaseRepository testCaseRepository, ContractTestCaseRepository contractTestCaseRepository) {
         this.restTemplate = restTemplate;
         this.testCaseRepository = testCaseRepository;
+        this.contractTestCaseRepository = contractTestCaseRepository;
     }
 
     public String generateTestCases(String fileName, String fileContent) {
@@ -169,4 +173,100 @@ public class ChatGptService {
 
         return updatedTestCasesContent;
     }
+
+    public String generateInitialContractTestCases(String swaggerName, String swaggerContent) {
+        String apiUrl = "https://api.openai.com/v1/chat/completions";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(openAiApiKey);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        // Prompt to generate manual contract test cases from Swagger content
+        String prompt = "Generate manual contract test cases based on the following OpenAPI (Swagger) content. Focus on endpoint coverage, request/response validation, required parameters, and expected outcomes: " + swaggerContent;
+
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("model", "gpt-3.5-turbo");
+        requestBody.put("messages", List.of(Map.of("role", "user", "content", prompt)));
+        requestBody.put("temperature", 0.7);
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, new ParameterizedTypeReference<Map<String, Object>>() {});
+
+        Map<String, Object> choices = (Map<String, Object>) ((List<?>) response.getBody().get("choices")).get(0);
+        String testCaseContent = (String) ((Map<String, Object>) choices.get("message")).get("content");
+
+        // Split the test cases from the response content
+        List<String> testCases = splitTestCases(testCaseContent);
+
+        // Save each test case in the database
+        for (String testCase : testCases) {
+            ContractTestCase testCaseEntity = new ContractTestCase(swaggerName, testCase);
+            contractTestCaseRepository.save(testCaseEntity);
+        }
+
+        return testCaseContent;
+    }
+
+    public String generateUpdatedContractTestCases(String swaggerFileName, String prCodeChanges) {
+        System.out.println(prCodeChanges);
+        String apiUrl = "https://api.openai.com/v1/chat/completions";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(openAiApiKey);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        List<ContractTestCase> existingTestCases = contractTestCaseRepository.findByFileName(swaggerFileName);
+        StringBuilder existingTestCasesText = new StringBuilder();
+
+        // Format the existing test cases into a string to include in the prompt
+        existingTestCasesText.append("Here are the existing test cases:\n");
+        for (ContractTestCase testCase : existingTestCases) {
+            existingTestCasesText.append(testCase.getTestCaseContent()).append("\n\n"); // Assuming getContent() retrieves test case details
+        }
+
+        // Construct the prompt with existing test cases included
+        String prompt = "Generate updated manual contract test cases based on the following OpenAPI (Swagger) file content and recent code changes. Focus on endpoint coverage, request/response validation, required parameters, and expected outcomes. " +
+                "Make modifications based only on the changes specified and ensure the updated test cases maintain the same structure and format as the existing ones.\n\n" +
+                "The following are the Swagger file changes:\n" + prCodeChanges + "\n\n" +
+                "Below are the existing test cases. Update these as needed based on the changes specified above:\n\n" +
+                existingTestCasesText.toString();
+
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("model", "gpt-3.5-turbo");
+        requestBody.put("messages", List.of(Map.of("role", "user", "content", prompt)));
+        requestBody.put("temperature", 0.7);
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, new ParameterizedTypeReference<Map<String, Object>>() {});
+
+        Map<String, Object> choices = (Map<String, Object>) ((List<?>) response.getBody().get("choices")).get(0);
+        String testCaseContent = (String) ((Map<String, Object>) choices.get("message")).get("content");
+
+        // Split the test cases from the response content
+        List<String> testCases = splitTestCases(testCaseContent);
+
+        // Save each test case in the database
+        for (String testCase : testCases) {
+            ContractTestCase testCaseEntity = new ContractTestCase(swaggerFileName, testCase);
+            contractTestCaseRepository.save(testCaseEntity);
+        }
+
+        return testCaseContent;
+    }
+
+    public List<String> updateContractTestCases(String prCodeChanges, String swaggerFileName) {
+        //Retrieve existing contract test cases from the database
+        List<ContractTestCase> existingTestCases = contractTestCaseRepository.findByFileName(swaggerFileName);
+
+        //If updates are needed, generate new test cases
+        String newTestCases = generateUpdatedContractTestCases(swaggerFileName, prCodeChanges);
+        List<String> updatedTestCases = splitTestCases(newTestCases);
+
+        System.out.println(updatedTestCases);
+        //Return the list of updated test cases
+        return updatedTestCases;
+    }
+
 }
