@@ -11,6 +11,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.view.RedirectView;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 @Controller
@@ -34,8 +35,9 @@ public class AuthController {
     }
 
     @GetMapping("/auth/github/callback")
-    public String githubCallback(@RequestParam("code") String code) {
+    public ResponseEntity<List<String>> githubCallback(@RequestParam("code") String code) {
         String tokenUrl = "https://github.com/login/oauth/access_token";
+        String userUrl = "https://api.github.com/user";
 
         // Create a RestTemplate instance
         RestTemplate restTemplate = new RestTemplate();
@@ -54,12 +56,22 @@ public class AuthController {
 
         // Exchange authorization code for access token
         ResponseEntity<Map> response = restTemplate.exchange(tokenUrl, HttpMethod.POST, requestEntity, Map.class);
-        System.out.println("Response: " + response.getBody());
         String accessToken = (String) response.getBody().get("access_token");
 
-        // Store the access token securely (session, database, etc.)
+        if (accessToken != null) {
+            HttpHeaders userHeaders = new HttpHeaders();
+            userHeaders.setBearerAuth(accessToken);
+            userHeaders.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
 
-        return "Access Token: " + accessToken; // For testing purposes
+            HttpEntity<String> userRequest = new HttpEntity<>(userHeaders);
+
+            ResponseEntity<Map> userResponse = restTemplate.exchange(userUrl, HttpMethod.GET, userRequest, Map.class);
+            String userId = String.valueOf(userResponse.getBody().get("login"));
+            List<String> result = List.of("access_token=" + accessToken, "user_id=" + userId);
+            return ResponseEntity.ok(result);
+        }
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Collections.singletonList("Failed to retrieve access token"));
     }
 
 }
