@@ -53,7 +53,8 @@ public class ChatGptService {
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
-        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, new ParameterizedTypeReference<Map<String, Object>>() {});
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, new ParameterizedTypeReference<Map<String, Object>>() {
+        });
 
         Map<String, Object> choices = (Map<String, Object>) ((List<?>) response.getBody().get("choices")).get(0);
         String testCaseContent = (String) ((Map<String, Object>) choices.get("message")).get("content");
@@ -90,7 +91,8 @@ public class ChatGptService {
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
-        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, new ParameterizedTypeReference<Map<String, Object>>() {});
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, new ParameterizedTypeReference<Map<String, Object>>() {
+        });
 
         Map<String, Object> choices = (Map<String, Object>) ((List<?>) response.getBody().get("choices")).get(0);
         String evaluationResult = (String) ((Map<String, Object>) choices.get("message")).get("content");
@@ -144,7 +146,6 @@ public class ChatGptService {
         }).orElse("No existing test cases found.");
 
         // Modify the prompt to include existing test cases and code changes
-        System.out.println(existingTestCasesContent);
         String prompt = "The file " + fileName + " has the following changes:\n" + codeChanges +
                 "\n Right now, I have the following manual testcases created before these code changes were made" +
                 "\n\n" + existingTestCasesContent +
@@ -182,7 +183,21 @@ public class ChatGptService {
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         // Prompt to generate manual contract test cases from Swagger content
-        String prompt = "Generate manual contract test cases based on the following OpenAPI (Swagger) content. Focus on endpoint coverage, request/response validation, required parameters, and expected outcomes: " + swaggerContent;
+        String prompt = String.format("""
+                Generate initial contract test cases based on the following Swagger file content:
+                
+                Swagger File Content:
+                %s
+                
+                Please focus on covering the following aspects:
+                
+                - Endpoint coverage, ensuring each endpoint has at least one test case.
+                - Request and response validation, including expected status codes and response structures.
+                - Required and optional parameters, along with any specific constraints or validation rules.
+                - Expected outcomes based on each endpoint’s purpose.
+                
+                Provide the test cases in a structured format to facilitate clear implementation.
+                """, swaggerContent);
 
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", "gpt-3.5-turbo");
@@ -191,7 +206,8 @@ public class ChatGptService {
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
-        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, new ParameterizedTypeReference<Map<String, Object>>() {});
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, new ParameterizedTypeReference<Map<String, Object>>() {
+        });
 
         Map<String, Object> choices = (Map<String, Object>) ((List<?>) response.getBody().get("choices")).get(0);
         String testCaseContent = (String) ((Map<String, Object>) choices.get("message")).get("content");
@@ -208,8 +224,7 @@ public class ChatGptService {
         return testCaseContent;
     }
 
-    public String generateUpdatedContractTestCases(String swaggerFileName, String prCodeChanges) {
-        System.out.println(prCodeChanges);
+    public String generateUpdatedContractTestCases(String swaggerFileName, String prCodeChanges, String initialSwaggerContent) {
         String apiUrl = "https://api.openai.com/v1/chat/completions";
 
         HttpHeaders headers = new HttpHeaders();
@@ -222,15 +237,30 @@ public class ChatGptService {
         // Format the existing test cases into a string to include in the prompt
         existingTestCasesText.append("Here are the existing test cases:\n");
         for (ContractTestCase testCase : existingTestCases) {
-            existingTestCasesText.append(testCase.getTestCaseContent()).append("\n\n"); // Assuming getContent() retrieves test case details
+            existingTestCasesText.append(testCase.getTestCaseContent()).append("\n\n");
         }
 
         // Construct the prompt with existing test cases included
-        String prompt = "Generate updated manual contract test cases based on the following OpenAPI (Swagger) file content and recent code changes. Focus on endpoint coverage, request/response validation, required parameters, and expected outcomes. " +
-                "Make modifications based only on the changes specified and ensure the updated test cases maintain the same structure and format as the existing ones.\n\n" +
-                "The following are the Swagger file changes:\n" + prCodeChanges + "\n\n" +
-                "Below are the existing test cases. Update these as needed based on the changes specified above:\n\n" +
-                existingTestCasesText.toString();
+        String prompt = String.format("""
+                Review the following inputs to update the contract test cases:
+
+                Original Swagger File Content (Before Changes):
+                %s
+
+                Swagger File Changes from PR:
+                %s
+
+                Existing Contract Test Cases:
+                %s
+
+                Based on these details, please update the contract test cases to reflect the changes. Focus on the following:
+
+                - Adjusting any endpoint coverage, request/response validation, or parameter requirements that have changed.
+                - Adding new test cases if new endpoints, parameters, or response structures were introduced.
+                - Removing or modifying test cases where requirements were removed or changed.
+                - Ensure the updated test cases maintain comprehensive coverage of the updated API specification,
+                accurately validate requests and responses, and reflect any new required or optional parameters and expected outcomes.
+                """, initialSwaggerContent, prCodeChanges, existingTestCasesText);
 
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", "gpt-3.5-turbo");
@@ -239,7 +269,8 @@ public class ChatGptService {
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
-        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, new ParameterizedTypeReference<Map<String, Object>>() {});
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, new ParameterizedTypeReference<Map<String, Object>>() {
+        });
 
         Map<String, Object> choices = (Map<String, Object>) ((List<?>) response.getBody().get("choices")).get(0);
         String testCaseContent = (String) ((Map<String, Object>) choices.get("message")).get("content");
@@ -256,16 +287,9 @@ public class ChatGptService {
         return testCaseContent;
     }
 
-    public List<String> updateContractTestCases(String prCodeChanges, String swaggerFileName) {
-        //Retrieve existing contract test cases from the database
-        List<ContractTestCase> existingTestCases = contractTestCaseRepository.findByFileName(swaggerFileName);
-
-        //If updates are needed, generate new test cases
-        String newTestCases = generateUpdatedContractTestCases(swaggerFileName, prCodeChanges);
+    public List<String> updateContractTestCases(String prCodeChanges, String swaggerFileName, String initialSwaggerContent) {
+        String newTestCases = generateUpdatedContractTestCases(swaggerFileName, prCodeChanges, initialSwaggerContent);
         List<String> updatedTestCases = splitTestCases(newTestCases);
-
-        System.out.println(updatedTestCases);
-        //Return the list of updated test cases
         return updatedTestCases;
     }
 

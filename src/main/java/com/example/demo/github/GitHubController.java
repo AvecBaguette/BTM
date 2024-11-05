@@ -1,6 +1,7 @@
 package com.example.demo.github;
 
 import com.example.demo.chatpgt.ChatGptService;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
@@ -162,32 +163,43 @@ public class GitHubController {
     }
 
     @GetMapping("/generate-contract-test-cases")
-    public ResponseEntity<String> generateContractTestCases(@RequestParam String user, @RequestParam String repo_name, @RequestParam String access_token) {
+    public ResponseEntity<String> generateContractTestCases(
+            @RequestParam String user,
+            @RequestParam String repo_name,
+            @RequestParam String access_token) {
         // Fetch all files from the repository
         Map<String, String> fileContents = fetchAllFilesFromRepo(user, repo_name, access_token);
 
         StringBuilder allContractTestCases = new StringBuilder();
+        // Generate initial contract test cases for the Swagger file
+        Result result = getResult(fileContents);
+        String contractTestCases = chatGptService.generateInitialContractTestCases(result.fileName(), result.content());
 
-        // Generate contract test cases for each Swagger file found
-        for (Map.Entry<String, String> entry : fileContents.entrySet()) {
-            String fileName = entry.getKey();
-            String content = entry.getValue();
-
-            // Check if the file is a Swagger file (could be identified by filename, e.g., swagger.json or openapi.yaml)
-            if (fileName.toLowerCase().contains("swagger") || fileName.toLowerCase().contains("openapi")) {
-                String contractTestCases = chatGptService.generateInitialContractTestCases(fileName, content);
-
-                allContractTestCases.append("File: ").append(fileName).append("\n")
-                        .append(contractTestCases).append("\n\n");
-            }
-        }
+        // Append the generated test cases to the result string
+        allContractTestCases.append("File: ").append(result.fileName()).append("\n")
+                .append(contractTestCases).append("\n\n");
 
         // Return the contract test cases generated for Swagger files
         if (allContractTestCases.isEmpty()) {
-            return ResponseEntity.ok("No Swagger files found for generating contract test cases.");
+            return ResponseEntity.ok("No Swagger file found for generating contract test cases.");
         } else {
             return ResponseEntity.ok(allContractTestCases.toString());
         }
+    }
+
+    @NotNull
+    private static Result getResult(Map<String, String> fileContents) {
+        Map.Entry<String, String> swaggerFileEntry = fileContents.entrySet().stream()
+                .filter(entry -> entry.getKey().toLowerCase().contains("swagger") || entry.getKey().toLowerCase().contains("openapi"))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("No Swagger or OpenAPI file found"));
+
+        String fileName = swaggerFileEntry.getKey();
+        String content = swaggerFileEntry.getValue();
+        return new Result(fileName, content);
+    }
+
+    private record Result(String fileName, String content) {
     }
 
     @GetMapping("/update-contract-test-cases")
@@ -210,14 +222,24 @@ public class GitHubController {
 
         // Step 3: Retrieve the code changes for the specified PR
         String prCodeChanges = getPRCodeChanges(user, repo_name, access_token, (Integer) targetPR.get("number"));
-
         // Step 4: Identify Swagger file name (assuming it's in the code changes or repository)
         String swaggerFileName = findSwaggerFileName(prCodeChanges); // Custom method to locate Swagger file
-        System.out.println(swaggerFileName);
-        // Step 5: Call the OpenAI service method to get updated contract test cases
-        List<String> updatedTestCases = chatGptService.updateContractTestCases(prCodeChanges, swaggerFileName);
-        // Step 6: Return the list of updated test cases
+
+        // Step 5: Retrieve the original Swagger file content (before changes)
+        String swaggerContent = getOriginalSwaggerContent(user, repo_name, access_token);
+        System.out.println(swaggerContent);
+        // Step 6: Call the OpenAI service method to get updated contract test cases
+        List<String> updatedTestCases = chatGptService.updateContractTestCases(prCodeChanges, swaggerFileName, swaggerContent);
+
+        // Step 7: Return the list of updated test cases
         return ResponseEntity.ok(updatedTestCases);
+    }
+
+    // Placeholder method for fetching the original Swagger content from a repository or source
+    private String getOriginalSwaggerContent(String user, String repoName, String accessToken) {
+        Map<String, String> fileContents = fetchAllFilesFromRepo(user, repoName, accessToken);
+        Result result = getResult(fileContents);
+        return result.content();
     }
 
     private List<Map<String, Object>> fetchOpenPullRequests(String user, String repo, String accessToken) {

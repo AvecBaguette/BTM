@@ -78,7 +78,7 @@ public class GitHubWebhookController {
             processCodeChanges(fileName, patch);
         }
     }
-
+    //TODO: this needs to be updated to use the correct generate test cases method based on app functionality (ex: contract tests, e2e tests)
     private void processCodeChanges(String fileName, String patch) {
         String updatedTestCases = chatGptService.generateTestCasesForChanges(fileName, patch);
         System.out.println("Updated Test Cases for " + fileName + ":\n" + updatedTestCases);
