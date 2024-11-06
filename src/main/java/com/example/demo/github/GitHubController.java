@@ -135,11 +135,11 @@ public class GitHubController {
 
     @GetMapping("/user/repo/prs")
     public ResponseEntity<List<String>> getActivePullRequests(
-            @RequestParam("user") String user,
+            @RequestParam("owner") String owner,
             @RequestParam("access_token") String accessToken,
             @RequestParam("repo_name") String repoName) {
 
-        String prsUrl = "https://api.github.com/repos/{user}/{repo}/pulls";
+        String prsUrl = "https://api.github.com/repos/{owner}/{repo}/pulls";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
@@ -147,7 +147,7 @@ public class GitHubController {
 
         HttpEntity<String> requestEntity = new HttpEntity<>(headers);
 
-        String formattedUrl = prsUrl.replace("{user}", user).replace("{repo}", repoName);
+        String formattedUrl = prsUrl.replace("{owner}", owner).replace("{repo}", repoName);
 
         ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                 formattedUrl, HttpMethod.GET, requestEntity, new ParameterizedTypeReference<List<Map<String, Object>>>() {}
@@ -164,11 +164,11 @@ public class GitHubController {
 
     @GetMapping("/generate-contract-test-cases")
     public ResponseEntity<String> generateContractTestCases(
-            @RequestParam String user,
+            @RequestParam String owner,
             @RequestParam String repo_name,
             @RequestParam String access_token) {
         // Fetch all files from the repository
-        Map<String, String> fileContents = fetchAllFilesFromRepo(user, repo_name, access_token);
+        Map<String, String> fileContents = fetchAllFilesFromRepo(owner, repo_name, access_token);
 
         StringBuilder allContractTestCases = new StringBuilder();
         // Generate initial contract test cases for the Swagger file
@@ -204,13 +204,13 @@ public class GitHubController {
 
     @GetMapping("/update-contract-test-cases")
     public ResponseEntity<List<String>> updateContractTestCases(
-            @RequestParam String user,
+            @RequestParam String owner,
             @RequestParam String repo_name,
             @RequestParam String access_token,
             @RequestParam String pr_name) {
 
         // Step 1: Retrieve the list of open PRs for the repository
-        List<Map<String, Object>> openPRs = fetchOpenPullRequests(user, repo_name, access_token);
+        List<Map<String, Object>> openPRs = fetchOpenPullRequests(owner, repo_name, access_token);
 
         // Step 2: Find the PR by name
         Map<String, Object> targetPR = openPRs.stream()
@@ -221,12 +221,12 @@ public class GitHubController {
         System.out.println(targetPR.get("number"));
 
         // Step 3: Retrieve the code changes for the specified PR
-        String prCodeChanges = getPRCodeChanges(user, repo_name, access_token, (Integer) targetPR.get("number"));
+        String prCodeChanges = getPRCodeChanges(owner, repo_name, access_token, (Integer) targetPR.get("number"));
         // Step 4: Identify Swagger file name (assuming it's in the code changes or repository)
         String swaggerFileName = findSwaggerFileName(prCodeChanges); // Custom method to locate Swagger file
 
         // Step 5: Retrieve the original Swagger file content (before changes)
-        String swaggerContent = getOriginalSwaggerContent(user, repo_name, access_token);
+        String swaggerContent = getOriginalSwaggerContent(owner, repo_name, access_token);
         System.out.println(swaggerContent);
         // Step 6: Call the OpenAI service method to get updated contract test cases
         List<String> updatedTestCases = chatGptService.updateContractTestCases(prCodeChanges, swaggerFileName, swaggerContent);
@@ -236,14 +236,14 @@ public class GitHubController {
     }
 
     // Placeholder method for fetching the original Swagger content from a repository or source
-    private String getOriginalSwaggerContent(String user, String repoName, String accessToken) {
-        Map<String, String> fileContents = fetchAllFilesFromRepo(user, repoName, accessToken);
+    private String getOriginalSwaggerContent(String owner, String repoName, String accessToken) {
+        Map<String, String> fileContents = fetchAllFilesFromRepo(owner, repoName, accessToken);
         Result result = getResult(fileContents);
         return result.content();
     }
 
-    private List<Map<String, Object>> fetchOpenPullRequests(String user, String repo, String accessToken) {
-        String url = "https://api.github.com/repos/" + user + "/" + repo + "/pulls?state=open";
+    private List<Map<String, Object>> fetchOpenPullRequests(String owner, String repo, String accessToken) {
+        String url = "https://api.github.com/repos/" + owner + "/" + repo + "/pulls?state=open";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
@@ -258,8 +258,8 @@ public class GitHubController {
         return response.getBody() != null ? response.getBody() : new ArrayList<>();
     }
 
-    private String getPRCodeChanges(String user, String repo, String accessToken, int prNumber) {
-        String url = "https://api.github.com/repos/" + user + "/" + repo + "/pulls/" + prNumber + "/files";
+    private String getPRCodeChanges(String owner, String repo, String accessToken, int prNumber) {
+        String url = "https://api.github.com/repos/" + owner + "/" + repo + "/pulls/" + prNumber + "/files";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
