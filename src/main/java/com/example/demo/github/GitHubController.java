@@ -133,6 +133,38 @@ public class GitHubController {
         return ResponseEntity.ok(repoNames);
     }
 
+    @GetMapping("/user/repo-owner")
+    public ResponseEntity<String> getRepositoryOwner(
+            @RequestParam("access_token") String accessToken,
+            @RequestParam("repo_name") String repoName) {
+
+        String reposUrl = "https://api.github.com/user/repos";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+
+        HttpEntity<String> requestEntity = new HttpEntity<>(headers);
+
+        ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                reposUrl, HttpMethod.GET, requestEntity, new ParameterizedTypeReference<List<Map<String, Object>>>() {}
+        );
+
+        if (response.getStatusCode() == HttpStatus.OK) {
+            List<Map<String, Object>> repositories = response.getBody();
+
+            // Loop through repositories to find the one matching the provided repoName
+            for (Map<String, Object> repo : repositories) {
+                if (repoName.equals(repo.get("name"))) {
+                    Map<String, Object> owner = (Map<String, Object>) repo.get("owner");
+                    String ownerName = (String) owner.get("login");
+                    return ResponseEntity.ok(ownerName); // Return the owner's username
+                }
+            }
+        }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Repository not found");
+    }
+
     @GetMapping("/user/repo/prs")
     public ResponseEntity<List<String>> getActivePullRequests(
             @RequestParam("owner") String owner,
