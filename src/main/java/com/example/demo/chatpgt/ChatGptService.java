@@ -196,7 +196,23 @@ public class ChatGptService {
                 - Required and optional parameters, along with any specific constraints or validation rules.
                 - Expected outcomes based on each endpoint’s purpose.
                 
-                Provide the test cases in a structured format to facilitate clear implementation.
+                Use the following structure for each test case:
+
+                Test Case Structure:
+                - **Test Case ID**: Unique identifier for the test case (e.g., `TC_EndpointName_StatusCode`)
+                - **Endpoint**: Full URL path for the API endpoint
+                - **Description**: Brief description of what this test case validates
+                - **Preconditions**: Any setup or prerequisites required before executing the test
+                - **Request Data**:
+                  - **Method**: HTTP method (e.g., GET, POST)
+                  - **Headers**: Required headers with example values
+                  - **Body Parameters**: List of parameters with sample values (if applicable)
+                - **Expected Response**:
+                  - **Status Code**: Expected HTTP status code (e.g., 200, 400)
+                  - **Response Body**: Example structure of the expected response, including data types and keys
+                - **Validation Rules**: Key response elements to validate, such as presence of specific fields, data types, or constraints.
+                
+                Please provide each test case in this structured format to facilitate clear and consistent implementation.
                 """, swaggerContent);
 
         Map<String, Object> requestBody = new HashMap<>();
@@ -260,6 +276,22 @@ public class ChatGptService {
                 - Removing or modifying test cases where requirements were removed or changed.
                 - Ensure the updated test cases maintain comprehensive coverage of the updated API specification,
                 accurately validate requests and responses, and reflect any new required or optional parameters and expected outcomes.
+                
+                Make sure to keep the following test case structure in place as the existing testcases were created based on this structure:
+                
+                Test Case Structure:
+                - **Test Case ID**: Unique identifier for the test case (e.g., `TC_EndpointName_StatusCode`)
+                - **Endpoint**: Full URL path for the API endpoint
+                - **Description**: Brief description of what this test case validates
+                - **Preconditions**: Any setup or prerequisites required before executing the test
+                - **Request Data**:
+                  - **Method**: HTTP method (e.g., GET, POST)
+                  - **Headers**: Required headers with example values
+                  - **Body Parameters**: List of parameters with sample values (if applicable)
+                - **Expected Response**:
+                  - **Status Code**: Expected HTTP status code (e.g., 200, 400)
+                  - **Response Body**: Example structure of the expected response, including data types and keys
+                - **Validation Rules**: Key response elements to validate, such as presence of specific fields, data types, or constraints.
                 """, initialSwaggerContent, prCodeChanges, existingTestCasesText);
 
         Map<String, Object> requestBody = new HashMap<>();
