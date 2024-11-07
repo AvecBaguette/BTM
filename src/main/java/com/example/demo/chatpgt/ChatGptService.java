@@ -105,8 +105,8 @@ public class ChatGptService {
     private List<String> splitTestCases(String content) {
         List<String> testCases = new ArrayList<>();
 
-        // Updated regex to ensure test case markers start at a new line or the beginning
-        Pattern pattern = Pattern.compile("(?<=^|\\n)\\d+\\.\\s"); // Match numbers + ". " only at start or after a line break
+        // Updated regex pattern to match "Test Case ID:" as the delimiter
+        Pattern pattern = Pattern.compile("(?<=^|\\n)Test Case ID:", Pattern.MULTILINE); // Match "Test Case ID:" at the start of each test case
         Matcher matcher = pattern.matcher(content);
 
         List<Integer> indices = new ArrayList<>();
@@ -117,7 +117,7 @@ public class ChatGptService {
         // Add the last index to ensure the last test case is captured
         indices.add(content.length());
 
-        // Split the content based on the indices of the test case markers
+        // Split the content based on the indices of the "Test Case ID:" markers
         for (int i = 0; i < indices.size() - 1; i++) {
             String testCase = content.substring(indices.get(i), indices.get(i + 1)).trim();
             testCases.add(testCase);
@@ -199,20 +199,22 @@ public class ChatGptService {
                 Use the following structure for each test case:
 
                 Test Case Structure:
-                - **Test Case ID**: Unique identifier for the test case (e.g., `TC_EndpointName_StatusCode`)
-                - **Endpoint**: Full URL path for the API endpoint
-                - **Description**: Brief description of what this test case validates
-                - **Preconditions**: Any setup or prerequisites required before executing the test
-                - **Request Data**:
-                  - **Method**: HTTP method (e.g., GET, POST)
-                  - **Headers**: Required headers with example values
-                  - **Body Parameters**: List of parameters with sample values (if applicable)
-                - **Expected Response**:
-                  - **Status Code**: Expected HTTP status code (e.g., 200, 400)
-                  - **Response Body**: Example structure of the expected response, including data types and keys
-                - **Validation Rules**: Key response elements to validate, such as presence of specific fields, data types, or constraints.
+                    Test Case ID: Unique identifier for the test case (e.g., `TC_EndpointName_StatusCode`)
+                    Endpoint: Full URL path for the API endpoint
+                    Description: Brief description of what this test case validates
+                    Preconditions: Any setup or prerequisites required before executing the test
+                    Request Data:
+                        Method: HTTP method (e.g., GET, POST)
+                        Headers: Required headers with example values
+                        Body Parameters: List of parameters with sample values (if applicable)
+                    Expected Response:
+                        Status Code: Expected HTTP status code (e.g., 200, 400)
+                        Response Body: Example structure of the expected response, including data types and keys
+                    Validation Rules: Key response elements to validate, such as presence of specific fields, data types, or constraints.
                 
                 Please provide each test case in this structured format to facilitate clear and consistent implementation.
+                Please make sure that your response starts directly with the first testcase and no other text before. For example your respons should start like this:
+                "Test Case ID: TC_EndpointName_StatusCode"
                 """, swaggerContent);
 
         Map<String, Object> requestBody = new HashMap<>();
@@ -227,7 +229,7 @@ public class ChatGptService {
 
         Map<String, Object> choices = (Map<String, Object>) ((List<?>) response.getBody().get("choices")).get(0);
         String testCaseContent = (String) ((Map<String, Object>) choices.get("message")).get("content");
-
+        System.out.println(testCaseContent);
         // Split the test cases from the response content
         List<String> testCases = splitTestCases(testCaseContent);
 
@@ -237,7 +239,34 @@ public class ChatGptService {
             contractTestCaseRepository.save(testCaseEntity);
         }
 
-        return testCaseContent;
+        return convertTestCaseToMarkdownUsingOpenAI(testCaseContent);
+    }
+    public String convertTestCaseToMarkdownUsingOpenAI(String testCaseContent) {
+        String apiUrl = "https://api.openai.com/v1/chat/completions";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(openAiApiKey); // Use your OpenAI API key here
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        // Set up the prompt to request markdown formatting
+        String prompt = "Convert the following test cases into well-structured markdown format. Use headers for each test case ID, bold labels for each field, and code blocks for JSON data. Format each section clearly:\n\n" + testCaseContent;
+
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("model", "gpt-3.5-turbo");
+        requestBody.put("messages", List.of(Map.of("role", "user", "content", prompt)));
+        requestBody.put("temperature", 0.5);
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+        // Send the request to OpenAI API
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                apiUrl, HttpMethod.POST, entity, new ParameterizedTypeReference<Map<String, Object>>() {}
+        );
+
+        // Extract the markdown response content
+        Map<String, Object> choices = (Map<String, Object>) ((List<?>) response.getBody().get("choices")).get(0);
+        String markdownContent = (String) ((Map<String, Object>) choices.get("message")).get("content");
+
+        return markdownContent;
     }
 
     public String generateUpdatedContractTestCases(String swaggerFileName, String prCodeChanges, String initialSwaggerContent) {
@@ -280,18 +309,21 @@ public class ChatGptService {
                 Make sure to keep the following test case structure in place as the existing testcases were created based on this structure:
                 
                 Test Case Structure:
-                - **Test Case ID**: Unique identifier for the test case (e.g., `TC_EndpointName_StatusCode`)
-                - **Endpoint**: Full URL path for the API endpoint
-                - **Description**: Brief description of what this test case validates
-                - **Preconditions**: Any setup or prerequisites required before executing the test
-                - **Request Data**:
-                  - **Method**: HTTP method (e.g., GET, POST)
-                  - **Headers**: Required headers with example values
-                  - **Body Parameters**: List of parameters with sample values (if applicable)
-                - **Expected Response**:
-                  - **Status Code**: Expected HTTP status code (e.g., 200, 400)
-                  - **Response Body**: Example structure of the expected response, including data types and keys
-                - **Validation Rules**: Key response elements to validate, such as presence of specific fields, data types, or constraints.
+                    Test Case ID: Unique identifier for the test case (e.g., `TC_EndpointName_StatusCode`)
+                    Endpoint: Full URL path for the API endpoint
+                    Description: Brief description of what this test case validates
+                    Preconditions: Any setup or prerequisites required before executing the test
+                    Request Data:
+                        Method: HTTP method (e.g., GET, POST)
+                        Headers: Required headers with example values
+                        Body Parameters: List of parameters with sample values (if applicable)
+                    Expected Response:
+                        Status Code: Expected HTTP status code (e.g., 200, 400)
+                        Response Body: Example structure of the expected response, including data types and keys
+                    Validation Rules: Key response elements to validate, such as presence of specific fields, data types, or constraints.
+                    
+                Please make sure that your response starts directly with the first testcase and no other text before. For example your respons should start like this:
+                "Test Case ID: TC_EndpointName_StatusCode"
                 """, initialSwaggerContent, prCodeChanges, existingTestCasesText);
 
         Map<String, Object> requestBody = new HashMap<>();
@@ -316,7 +348,7 @@ public class ChatGptService {
             contractTestCaseRepository.save(testCaseEntity);
         }
 
-        return testCaseContent;
+        return convertTestCaseToMarkdownUsingOpenAI(testCaseContent);
     }
 
     public List<String> updateContractTestCases(String prCodeChanges, String swaggerFileName, String initialSwaggerContent) {
