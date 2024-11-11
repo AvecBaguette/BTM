@@ -122,7 +122,8 @@ public class GitHubController {
         HttpEntity<String> requestEntity = new HttpEntity<>(headers);
 
         ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
-                reposUrl, HttpMethod.GET, requestEntity, new ParameterizedTypeReference<List<Map<String, Object>>>() {}
+                reposUrl, HttpMethod.GET, requestEntity, new ParameterizedTypeReference<List<Map<String, Object>>>() {
+                }
         );
 
         // Extract just the repository names
@@ -147,7 +148,8 @@ public class GitHubController {
         HttpEntity<String> requestEntity = new HttpEntity<>(headers);
 
         ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
-                reposUrl, HttpMethod.GET, requestEntity, new ParameterizedTypeReference<List<Map<String, Object>>>() {}
+                reposUrl, HttpMethod.GET, requestEntity, new ParameterizedTypeReference<List<Map<String, Object>>>() {
+                }
         );
 
         if (response.getStatusCode() == HttpStatus.OK) {
@@ -182,7 +184,8 @@ public class GitHubController {
         String formattedUrl = prsUrl.replace("{owner}", owner).replace("{repo}", repoName);
 
         ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
-                formattedUrl, HttpMethod.GET, requestEntity, new ParameterizedTypeReference<List<Map<String, Object>>>() {}
+                formattedUrl, HttpMethod.GET, requestEntity, new ParameterizedTypeReference<List<Map<String, Object>>>() {
+                }
         );
 
         // Extract PR titles from active PRs
@@ -195,28 +198,24 @@ public class GitHubController {
     }
 
     @GetMapping("/generate-contract-test-cases")
-    public ResponseEntity<String> generateContractTestCases(
+    public ResponseEntity<?> generateContractTestCases(
             @RequestParam String owner,
             @RequestParam String repo_name,
             @RequestParam String access_token) {
         // Fetch all files from the repository
         Map<String, String> fileContents = fetchAllFilesFromRepo(owner, repo_name, access_token);
 
-        StringBuilder allContractTestCases = new StringBuilder();
         // Generate initial contract test cases for the Swagger file
         Result result = getResult(fileContents);
-        String contractTestCases = chatGptService.generateInitialContractTestCases(result.fileName(), result.content());
+        ArrayList<String> contractTestCases = chatGptService.generateInitialContractTestCases(result.fileName(), result.content());
 
-        // Append the generated test cases to the result string
-        allContractTestCases.append("File: ").append(result.fileName()).append("\n")
-                .append(contractTestCases).append("\n\n");
-
-        // Return the contract test cases generated for Swagger files
-        if (allContractTestCases.isEmpty()) {
-            return ResponseEntity.ok("No Swagger file found for generating contract test cases.");
-        } else {
-            return ResponseEntity.ok(allContractTestCases.toString());
+        // Check if the list is empty and return a message if so
+        if (contractTestCases.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("No contract test cases were generated.");
         }
+        //return the list of generated tests
+        return ResponseEntity.ok(contractTestCases);
     }
 
     @NotNull

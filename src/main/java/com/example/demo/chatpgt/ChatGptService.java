@@ -175,7 +175,7 @@ public class ChatGptService {
         return updatedTestCasesContent;
     }
 
-    public String generateInitialContractTestCases(String swaggerName, String swaggerContent) {
+    public ArrayList<String> generateInitialContractTestCases(String swaggerName, String swaggerContent) {
         String apiUrl = "https://api.openai.com/v1/chat/completions";
 
         HttpHeaders headers = new HttpHeaders();
@@ -232,14 +232,18 @@ public class ChatGptService {
         System.out.println(testCaseContent);
         // Split the test cases from the response content
         List<String> testCases = splitTestCases(testCaseContent);
+        ArrayList<String> convertedMDTestCaseList = new ArrayList<String>();
 
         // Save each test case in the database
         for (String testCase : testCases) {
             ContractTestCase testCaseEntity = new ContractTestCase(swaggerName, testCase);
             contractTestCaseRepository.save(testCaseEntity);
+            //Convert the testcase into MD and add it to the output list
+            String convertedMDTestCase = convertTestCaseToMarkdownUsingOpenAI(testCase);
+            convertedMDTestCaseList.add(convertedMDTestCase);
         }
 
-        return convertTestCaseToMarkdownUsingOpenAI(testCaseContent);
+        return convertedMDTestCaseList;
     }
     public String convertTestCaseToMarkdownUsingOpenAI(String testCaseContent) {
         String apiUrl = "https://api.openai.com/v1/chat/completions";
@@ -248,7 +252,7 @@ public class ChatGptService {
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         // Set up the prompt to request markdown formatting
-        String prompt = "Convert the following test cases into well-structured markdown format. Use headers for each test case ID, bold labels for each field, and code blocks for JSON data. Format each section clearly:\n\n" + testCaseContent;
+        String prompt = "Convert the following test case into well-structured markdown format. Use headers for the test case ID, bold labels for each field, and code blocks for JSON data. Format each section clearly:\n\n" + testCaseContent;
 
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", "gpt-3.5-turbo");
