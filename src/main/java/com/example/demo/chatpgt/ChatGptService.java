@@ -196,17 +196,27 @@ public class ChatGptService {
                 Use the following structure for each test case and ensure each field is formatted using appropriate Markdown:
 
                 Test Case Structure:
-                    ## Test Case ID: Unique identifier for the test case (e.g., `TC_EndpointName_StatusCode`)
-                    **Endpoint**: Full URL path for the API endpoint
-                    **Description**: Brief description of what this test case validates
-                    **Preconditions**: Any setup or prerequisites required before executing the test
-                    **Request Data**:
-                        - **Method**: HTTP method (e.g., GET, POST)
-                        - **Headers**: Required headers with example values
-                        - **Body Parameters**: List of parameters with sample values (if applicable)
-                    **Expected Response**:
-                        - **Status Code**: Expected HTTP status code (e.g., 200, 400)
-                        - **Response Body**: Example structure of the expected response, formatted in a JSON code block
+                    ## Test Case ID: Unique identifier for the test case (e.g., `TC_EndpointName_StatusCode`) \s
+                    **Endpoint**: Full URL path for the API endpoint \s
+                    **Description**: Brief description of what this test case validates \s
+                    **Preconditions**: Any setup or prerequisites required before executing the test \s
+                    
+                    **Request Data**: \s
+                    - **Method**: HTTP method (e.g., GET, POST) \s
+                    - **Headers**: Required headers with example values \s
+                    - **Body Parameters**: List of parameters with sample values (if applicable) \s
+                    
+                    **Expected Response**: \s
+                    - **Status Code**: Expected HTTP status code (e.g., 200, 400) \s
+                    - **Response Body**: Example structure of the expected response, formatted in a JSON code block \s
+                    
+                        ```json
+                        {
+                            "key": "value",
+                            "anotherKey": "anotherValue"
+                        }
+                        ```
+                    
                     **Validation Rules**: Key response elements to validate, such as presence of specific fields, data types, or constraints.
                 
                 Ensure each test case is provided in a well-structured Markdown format. Use:
