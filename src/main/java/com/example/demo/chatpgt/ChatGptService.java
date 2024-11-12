@@ -211,11 +211,11 @@ public class ChatGptService {
                     - **Status Code**: Expected HTTP status code (e.g., 200, 400) \s
                     - **Response Body**: Example structure of the expected response, formatted in a JSON code block \s
                     
-                    ```json
-                      {
-                        "key": "value",
-                        "anotherKey": "anotherValue"
-                      }
+                    ```
+                      { \s
+                        "key": "value", \s
+                        "anotherKey": "anotherValue" \s
+                      } \s
                     ```
                     
                     **Validation Rules**: Key response elements to validate, such as presence of specific fields, data types, or constraints.
