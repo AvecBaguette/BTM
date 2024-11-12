@@ -29,8 +29,6 @@ public class GitHubWebhookController {
     public ResponseEntity<String> handleWebhook(
             @RequestBody Map<String, Object> payload,
             @RequestHeader("X-GitHub-Event") String eventType) {
-        // Log the incoming event type
-        System.out.println("Received GitHub event: " + eventType);
 
         switch (eventType) {
             case "pull_request":
@@ -81,6 +79,5 @@ public class GitHubWebhookController {
     //TODO: this needs to be updated to use the correct generate test cases method based on app functionality (ex: contract tests, e2e tests)
     private void processCodeChanges(String fileName, String patch) {
         String updatedTestCases = chatGptService.generateTestCasesForChanges(fileName, patch);
-        System.out.println("Updated Test Cases for " + fileName + ":\n" + updatedTestCases);
     }
 }

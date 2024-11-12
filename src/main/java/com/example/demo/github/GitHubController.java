@@ -290,8 +290,6 @@ public class GitHubController {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("PR not found"));
 
-        System.out.println(targetPR.get("number"));
-
         // Step 3: Retrieve the code changes for the specified PR
         String prCodeChanges = getPRCodeChanges(owner, repo_name, access_token, (Integer) targetPR.get("number"));
         // Step 4: Identify Swagger file name (assuming it's in the code changes or repository)
@@ -299,7 +297,6 @@ public class GitHubController {
 
         // Step 5: Retrieve the original Swagger file content (before changes)
         String swaggerContent = getOriginalSwaggerContent(owner, repo_name, access_token);
-        System.out.println(swaggerContent);
         // Step 6: Call the OpenAI service method to get updated contract test cases
         List<Map.Entry<String, String>> updatedTestCases = chatGptService.updateContractTestCases(prCodeChanges, swaggerFileName, swaggerContent);
 

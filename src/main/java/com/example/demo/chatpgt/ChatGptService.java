@@ -94,7 +94,6 @@ public class ChatGptService {
 
         Map<String, Object> choices = (Map<String, Object>) ((List<?>) response.getBody().get("choices")).get(0);
         String evaluationResult = (String) ((Map<String, Object>) choices.get("message")).get("content");
-        System.out.println(evaluationResult);
 
         // Return true if OpenAI says "No" (meaning no e2e test cases are needed)
         return evaluationResult.trim().equalsIgnoreCase("No");
@@ -130,7 +129,6 @@ public class ChatGptService {
 
         // Fetch existing test cases from the database
         Optional<List<TestCase>> existingTestCases = testCaseRepository.findByFileName(fileName);
-        System.out.println(existingTestCases);
         String existingTestCasesContent = existingTestCases.map(testCases -> {
             StringBuilder sb = new StringBuilder();
             sb.append("Here are the existing test cases for ").append(fileName).append(":\n\n");
@@ -241,7 +239,6 @@ public class ChatGptService {
         Map<String, Object> choices = (Map<String, Object>) ((List<?>) response.getBody().get("choices")).get(0);
         String testCaseContent = (String) ((Map<String, Object>) choices.get("message")).get("content");
 
-        System.out.println(testCaseContent);
 
         // Split the test cases from the response content and return it
         return splitTestCases(testCaseContent);
@@ -383,7 +380,6 @@ public class ChatGptService {
         Map<String, Object> choices = (Map<String, Object>) ((List<?>) response.getBody().get("choices")).get(0);
         String testCaseContent = (String) ((Map<String, Object>) choices.get("message")).get("content");
 
-        System.out.println(testCaseContent);
 
         List<String> testCasesList = splitTestCases(testCaseContent);
 
