@@ -192,6 +192,7 @@ public class ChatGptService {
                 - Request and response validation, including expected status codes and response structures.
                 - Required and optional parameters, along with any specific constraints or validation rules.
                 - Expected outcomes based on each endpoint’s purpose.
+                - After every section, after the ":" there is an example or explanation of what you need to generate
                 
                 Use the following structure for each test case and ensure each field is formatted using appropriate Markdown:
 
@@ -210,12 +211,12 @@ public class ChatGptService {
                     - **Status Code**: Expected HTTP status code (e.g., 200, 400) \s
                     - **Response Body**: Example structure of the expected response, formatted in a JSON code block \s
                     
-                        ```json
-                        {
-                            "key": "value",
-                            "anotherKey": "anotherValue"
-                        }
-                        ```
+                    ```json
+                      {
+                        "key": "value",
+                        "anotherKey": "anotherValue"
+                      }
+                    ```
                     
                     **Validation Rules**: Key response elements to validate, such as presence of specific fields, data types, or constraints.
                 
