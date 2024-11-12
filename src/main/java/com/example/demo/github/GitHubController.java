@@ -5,10 +5,7 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.StandardCharsets;
@@ -207,7 +204,7 @@ public class GitHubController {
 
         // Generate initial contract test cases for the Swagger file
         Result result = getResult(fileContents);
-        ArrayList<String> contractTestCases = chatGptService.generateInitialContractTestCases(result.fileName(), result.content());
+        List<String> contractTestCases = chatGptService.generateInitialContractTestCases(result.fileName(), result.content());
 
         // Check if the list is empty and return a message if so
         if (contractTestCases.isEmpty()) {
@@ -216,6 +213,29 @@ public class GitHubController {
         }
         //return the list of generated tests
         return ResponseEntity.ok(contractTestCases);
+    }
+
+    @PostMapping("/save-contract-test-cases")
+    public ResponseEntity<?> saveContractTestCases(
+            @RequestParam String owner,
+            @RequestParam String repo_name,
+            @RequestParam String access_token,
+            @RequestBody List<String> contractTestCases) {
+
+        // Check if the received list is empty
+        if (contractTestCases == null || contractTestCases.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("The list of contract test cases is empty.");
+        }
+
+        Map<String, String> fileContents = fetchAllFilesFromRepo(owner, repo_name, access_token);
+        // Generate initial contract test cases for the Swagger file
+        Result result = getResult(fileContents);
+
+        chatGptService.saveContractTestsCasesToDB(result.fileName(), contractTestCases);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body("Contract test cases have been saved successfully.");
     }
 
     @NotNull

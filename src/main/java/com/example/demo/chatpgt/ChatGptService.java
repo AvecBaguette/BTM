@@ -105,22 +105,19 @@ public class ChatGptService {
     private List<String> splitTestCases(String content) {
         List<String> testCases = new ArrayList<>();
 
-        // Updated regex pattern to match "Test Case ID:" as the delimiter
-        Pattern pattern = Pattern.compile("(?<=^|\\n)Test Case ID:", Pattern.MULTILINE); // Match "Test Case ID:" at the start of each test case
-        Matcher matcher = pattern.matcher(content);
+        // Trim any trailing "ROW_SEPARATOR" and newline from the content
+        content = content.replaceAll("(ROW_SEPARATOR\\R?)+$", "");
 
-        List<Integer> indices = new ArrayList<>();
-        while (matcher.find()) {
-            indices.add(matcher.start());
-        }
+        // Split the content based on "ROW_SEPARATOR" followed by a newline
+        String[] splitContent = content.split("ROW_SEPARATOR\\R");
 
-        // Add the last index to ensure the last test case is captured
-        indices.add(content.length());
-
-        // Split the content based on the indices of the "Test Case ID:" markers
-        for (int i = 0; i < indices.size() - 1; i++) {
-            String testCase = content.substring(indices.get(i), indices.get(i + 1)).trim();
-            testCases.add(testCase);
+        // Process each split part
+        for (String testCase : splitContent) {
+            // Trim and add each test case to the list if it's not empty
+            testCase = testCase.trim();
+            if (!testCase.isEmpty()) {
+                testCases.add(testCase);
+            }
         }
 
         return testCases;
@@ -175,7 +172,7 @@ public class ChatGptService {
         return updatedTestCasesContent;
     }
 
-    public ArrayList<String> generateInitialContractTestCases(String swaggerName, String swaggerContent) {
+    public List<String> generateInitialContractTestCases(String swaggerName, String swaggerContent) {
         String apiUrl = "https://api.openai.com/v1/chat/completions";
 
         HttpHeaders headers = new HttpHeaders();
@@ -196,25 +193,29 @@ public class ChatGptService {
                 - Required and optional parameters, along with any specific constraints or validation rules.
                 - Expected outcomes based on each endpoint’s purpose.
                 
-                Use the following structure for each test case:
+                Use the following structure for each test case and ensure each field is formatted using appropriate Markdown:
 
                 Test Case Structure:
-                    Test Case ID: Unique identifier for the test case (e.g., `TC_EndpointName_StatusCode`)
-                    Endpoint: Full URL path for the API endpoint
-                    Description: Brief description of what this test case validates
-                    Preconditions: Any setup or prerequisites required before executing the test
-                    Request Data:
-                        Method: HTTP method (e.g., GET, POST)
-                        Headers: Required headers with example values
-                        Body Parameters: List of parameters with sample values (if applicable)
-                    Expected Response:
-                        Status Code: Expected HTTP status code (e.g., 200, 400)
-                        Response Body: Example structure of the expected response, including data types and keys
-                    Validation Rules: Key response elements to validate, such as presence of specific fields, data types, or constraints.
+                    ## Test Case ID: Unique identifier for the test case (e.g., `TC_EndpointName_StatusCode`)
+                    **Endpoint**: Full URL path for the API endpoint
+                    **Description**: Brief description of what this test case validates
+                    **Preconditions**: Any setup or prerequisites required before executing the test
+                    **Request Data**:
+                        - **Method**: HTTP method (e.g., GET, POST)
+                        - **Headers**: Required headers with example values
+                        - **Body Parameters**: List of parameters with sample values (if applicable)
+                    **Expected Response**:
+                        - **Status Code**: Expected HTTP status code (e.g., 200, 400)
+                        - **Response Body**: Example structure of the expected response, formatted in a JSON code block
+                    **Validation Rules**: Key response elements to validate, such as presence of specific fields, data types, or constraints.
                 
-                Please provide each test case in this structured format to facilitate clear and consistent implementation.
-                Please make sure that your response starts directly with the first testcase and no other text before. For example your respons should start like this:
-                "Test Case ID: TC_EndpointName_StatusCode"
+                Ensure each test case is provided in a well-structured Markdown format. Use:
+                - Double hashes (`##`) for the test case ID as a header.
+                - Bold formatting (using `**`) for each field label (e.g., **Endpoint**, **Description**).
+                - Code blocks (using triple backticks) for JSON data in the **Response Body** section.
+
+                Please start directly with the first test case in the response and no additional text beforehand. Separate each test case by the following row exactly written like this:
+                ROW_SEPARATOR
                 """, swaggerContent);
 
         Map<String, Object> requestBody = new HashMap<>();
@@ -229,22 +230,20 @@ public class ChatGptService {
 
         Map<String, Object> choices = (Map<String, Object>) ((List<?>) response.getBody().get("choices")).get(0);
         String testCaseContent = (String) ((Map<String, Object>) choices.get("message")).get("content");
+
         System.out.println(testCaseContent);
-        // Split the test cases from the response content
-        List<String> testCases = splitTestCases(testCaseContent);
-        ArrayList<String> convertedMDTestCaseList = new ArrayList<String>();
 
-        // Save each test case in the database
-        for (String testCase : testCases) {
-            ContractTestCase testCaseEntity = new ContractTestCase(swaggerName, testCase);
-            contractTestCaseRepository.save(testCaseEntity);
-            //Convert the testcase into MD and add it to the output list
-            String convertedMDTestCase = convertTestCaseToMarkdownUsingOpenAI(testCase);
-            convertedMDTestCaseList.add(convertedMDTestCase);
-        }
-
-        return convertedMDTestCaseList;
+        // Split the test cases from the response content and return it
+        return splitTestCases(testCaseContent);
     }
+
+    public void saveContractTestsCasesToDB(String swaggerFileName, List<String> contractTestCases) {
+        for (String testCase: contractTestCases) {
+            ContractTestCase testCaseEntity = new ContractTestCase(swaggerFileName, testCase);
+            contractTestCaseRepository.save(testCaseEntity);
+        }
+    }
+
     public String convertTestCaseToMarkdownUsingOpenAI(String testCaseContent) {
         String apiUrl = "https://api.openai.com/v1/chat/completions";
         HttpHeaders headers = new HttpHeaders();
