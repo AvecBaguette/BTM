@@ -8,4 +8,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ContractTestCaseRepository extends JpaRepository<ContractTestCase, Long> {
     List<ContractTestCase> findByFileName(String fileName);
+    Optional<ContractTestCase> findByFileNameAndTestCaseContent(String fileName, String testCaseContent);
+
 }

@@ -229,10 +229,31 @@ public class GitHubController {
         }
 
         Map<String, String> fileContents = fetchAllFilesFromRepo(owner, repo_name, access_token);
-        // Generate initial contract test cases for the Swagger file
         Result result = getResult(fileContents);
 
         chatGptService.saveContractTestsCasesToDB(result.fileName(), contractTestCases);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body("Contract test cases have been saved successfully.");
+    }
+
+    @PostMapping("/update-contract-test-cases")
+    public ResponseEntity<?> updateContractTestCases(
+            @RequestParam String owner,
+            @RequestParam String repo_name,
+            @RequestParam String access_token,
+            @RequestBody List<Map.Entry<String,String>> updatedContractTestCases) {
+
+        // Check if the received list is empty
+        if (updatedContractTestCases == null || updatedContractTestCases.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("The list of contract test cases is empty.");
+        }
+
+        Map<String, String> fileContents = fetchAllFilesFromRepo(owner, repo_name, access_token);
+        Result result = getResult(fileContents);
+
+        chatGptService.updateContractTestCasesInDB(result.fileName(), updatedContractTestCases);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body("Contract test cases have been saved successfully.");
@@ -253,8 +274,8 @@ public class GitHubController {
     private record Result(String fileName, String content) {
     }
 
-    @GetMapping("/update-contract-test-cases")
-    public ResponseEntity<List<String>> updateContractTestCases(
+    @GetMapping("/generate-updated-contract-test-cases")
+    public ResponseEntity<?> updateContractTestCases(
             @RequestParam String owner,
             @RequestParam String repo_name,
             @RequestParam String access_token,
@@ -280,7 +301,7 @@ public class GitHubController {
         String swaggerContent = getOriginalSwaggerContent(owner, repo_name, access_token);
         System.out.println(swaggerContent);
         // Step 6: Call the OpenAI service method to get updated contract test cases
-        List<String> updatedTestCases = chatGptService.updateContractTestCases(prCodeChanges, swaggerFileName, swaggerContent);
+        List<Map.Entry<String, String>> updatedTestCases = chatGptService.updateContractTestCases(prCodeChanges, swaggerFileName, swaggerContent);
 
         // Step 7: Return the list of updated test cases
         return ResponseEntity.ok(updatedTestCases);
