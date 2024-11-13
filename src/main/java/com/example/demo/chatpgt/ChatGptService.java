@@ -194,18 +194,18 @@ public class ChatGptService {
 
                 Test Case Structure:
                     ## Test Case ID: Unique identifier for the test case (e.g., `TC_EndpointName_StatusCode`)
-                    **Endpoint**: Full URL path for the API endpoint
-                    **Description**: Brief description of what this test case validates
-                    **Preconditions**: Any setup or prerequisites required before executing the test
+                    - **Endpoint**: Full URL path for the API endpoint
+                    - **Description**: Brief description of what this test case validates
+                    - **Preconditions**: Any setup or prerequisites required before executing the test
                     
-                    **Request Data**:
-                    - **Method**: HTTP method (e.g., GET, POST)
-                    - **Headers**: Required headers with example values
-                    - **Body Parameters**: List of parameters with sample values (if applicable)
+                    - **Request Data**:
+                        * **Method**: HTTP method (e.g., GET, POST)
+                        * **Headers**: Required headers with example values
+                        * **Body Parameters**: List of parameters with sample values (if applicable)
                     
-                    **Expected Response**:
-                    - **Status Code**: Expected HTTP status code (e.g., 200, 400)
-                    - **Response Body**: Example structure of the expected response, formatted in a JSON code block
+                    - **Expected Response**:
+                        * **Status Code**: Expected HTTP status code (e.g., 200, 400)
+                        * **Response Body**: Example structure of the expected response, formatted in a JSON code block
                     
                     ```
                       {
@@ -214,13 +214,12 @@ public class ChatGptService {
                       }
                     ```
                     
-                    **Validation Rules**: Key response elements to validate, such as presence of specific fields, data types, or constraints.
+                    - **Validation Rules**: Key response elements to validate, such as presence of specific fields, data types, or constraints.
                                 
                 Ensure each test case is provided in a well-structured Markdown format. Use:
                 - Double hashes (`##`) for the test case ID as a header.
                 - Bold formatting (using `**`) for each field label (e.g., **Endpoint**, **Description**).
                 - Code blocks (using triple backticks) for JSON data in the **Response Body** section.
-                - 2 spaces like this "  " after each field label (e.g., **Endpoint**, **Description**).
 
                 Please start directly with the first test case in the response and no additional text beforehand. Separate each test case by the following row exactly written like this:
                 ROW_SEPARATOR
@@ -342,18 +341,18 @@ public class ChatGptService {
                                 
                 Test Case Structure:
                     ## Test Case ID: Unique identifier for the test case (e.g., `TC_EndpointName_StatusCode`)
-                    **Endpoint**: Full URL path for the API endpoint
-                    **Description**: Brief description of what this test case validates
-                    **Preconditions**: Any setup or prerequisites required before executing the test
+                    - **Endpoint**: Full URL path for the API endpoint
+                    - **Description**: Brief description of what this test case validates
+                    - **Preconditions**: Any setup or prerequisites required before executing the test
                     
-                    **Request Data**:
-                    - **Method**: HTTP method (e.g., GET, POST)
-                    - **Headers**: Required headers with example values
-                    - **Body Parameters**: List of parameters with sample values (if applicable)
+                    - **Request Data**:
+                        * **Method**: HTTP method (e.g., GET, POST)
+                        * **Headers**: Required headers with example values
+                        * **Body Parameters**: List of parameters with sample values (if applicable)
                     
-                    **Expected Response**:
-                    - **Status Code**: Expected HTTP status code (e.g., 200, 400)
-                    - **Response Body**: Example structure of the expected response, formatted in a JSON code block
+                    - **Expected Response**:
+                        * **Status Code**: Expected HTTP status code (e.g., 200, 400)
+                        * **Response Body**: Example structure of the expected response, formatted in a JSON code block
                     
                     ```
                       {
@@ -362,7 +361,7 @@ public class ChatGptService {
                       }
                     ```
                     
-                    **Validation Rules**: Key response elements to validate, such as presence of specific fields, data types, or constraints.
+                    - **Validation Rules**: Key response elements to validate, such as presence of specific fields, data types, or constraints.
                     
                 Please start directly with the first test case in the response and no additional text beforehand. Separate each test case by the following row exactly written like this:
                 ROW_SEPARATOR
