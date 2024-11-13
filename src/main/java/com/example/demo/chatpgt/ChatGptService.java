@@ -178,18 +178,18 @@ public class ChatGptService {
         // Prompt to generate manual contract test cases from Swagger content
         String prompt = String.format("""
                 Generate initial contract test cases based on the following Swagger file content:
-                
+                                
                 Swagger File Content:
                 %s
-                
+                                
                 Please focus on covering the following aspects:
-                
+                                
                 - Endpoint coverage, ensuring each endpoint has at least one test case.
                 - Request and response validation, including expected status codes and response structures.
                 - Required and optional parameters, along with any specific constraints or validation rules.
                 - Expected outcomes based on each endpoint’s purpose.
                 - After every section, after the ":" there is an example or explanation of what you need to generate
-                
+                                
                 Use the following structure for each test case and ensure each field is formatted using appropriate Markdown:
 
                 Test Case Structure:
@@ -215,7 +215,7 @@ public class ChatGptService {
                     ```
                     
                     **Validation Rules**: Key response elements to validate, such as presence of specific fields, data types, or constraints.
-                
+                                
                 Ensure each test case is provided in a well-structured Markdown format. Use:
                 - Double hashes (`##`) for the test case ID as a header.
                 - Bold formatting (using `**`) for each field label (e.g., **Endpoint**, **Description**).
@@ -245,7 +245,7 @@ public class ChatGptService {
     }
 
     public void saveContractTestsCasesToDB(String swaggerFileName, List<String> contractTestCases) {
-        for (String testCase: contractTestCases) {
+        for (String testCase : contractTestCases) {
             ContractTestCase testCaseEntity = new ContractTestCase(swaggerFileName, testCase);
             contractTestCaseRepository.save(testCaseEntity);
         }
@@ -288,7 +288,8 @@ public class ChatGptService {
 
         // Send the request to OpenAI API
         ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                apiUrl, HttpMethod.POST, entity, new ParameterizedTypeReference<Map<String, Object>>() {}
+                apiUrl, HttpMethod.POST, entity, new ParameterizedTypeReference<Map<String, Object>>() {
+                }
         );
 
         // Extract the markdown response content
@@ -336,9 +337,9 @@ public class ChatGptService {
                 accurately validate requests and responses, and reflect any new required or optional parameters and expected outcomes.
                 - Keep the markdown structure in place and only update testcases IF NEEDED based on the changes, if not needed, let the tests as they are
                 - Always return the full list of testcases, whether they were updated or not
-                
+                                
                 Make sure to keep the following test case structure in place as the existing testcases were created based on this structure:
-                
+                                
                 Test Case Structure:
                     ## Test Case ID: Unique identifier for the test case (e.g., `TC_EndpointName_StatusCode`)
                     **Endpoint**: Full URL path for the API endpoint
@@ -386,7 +387,10 @@ public class ChatGptService {
         List<Map.Entry<String, String>> combinedList = new ArrayList<>();
 
         for (int i = 0; i < testCasesList.size(); i++) {
-            combinedList.add(new AbstractMap.SimpleEntry<>(testCasesList.get(i), existingTestCases.get(i).getTestCaseContent()));
+            if (!testCasesList.get(i).equals(existingTestCases.get(i).getTestCaseContent())) {
+                combinedList.add(new AbstractMap.SimpleEntry<>(testCasesList.get(i), existingTestCases.get(i).getTestCaseContent()));
+            }
+
         }
 
         return combinedList;
