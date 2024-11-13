@@ -220,7 +220,7 @@ public class ChatGptService {
                 - Double hashes (`##`) for the test case ID as a header.
                 - Bold formatting (using `**`) for each field label (e.g., **Endpoint**, **Description**).
                 - Code blocks (using triple backticks) for JSON data in the **Response Body** section.
-                - New line after each field label (e.g., **Endpoint**, **Description**).
+                - 2 spaces like this "  " after each field label (e.g., **Endpoint**, **Description**).
 
                 Please start directly with the first test case in the response and no additional text beforehand. Separate each test case by the following row exactly written like this:
                 ROW_SEPARATOR
