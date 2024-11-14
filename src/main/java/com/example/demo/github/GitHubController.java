@@ -165,7 +165,7 @@ public class GitHubController {
     }
 
     @GetMapping("/user/repo/prs")
-    public ResponseEntity<List<String>> getActivePullRequests(
+    public ResponseEntity<List<Map<String, String>>> getActivePullRequests(
             @RequestParam("owner") String owner,
             @RequestParam("access_token") String accessToken,
             @RequestParam("repo_name") String repoName) {
@@ -181,17 +181,19 @@ public class GitHubController {
         String formattedUrl = prsUrl.replace("{owner}", owner).replace("{repo}", repoName);
 
         ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
-                formattedUrl, HttpMethod.GET, requestEntity, new ParameterizedTypeReference<List<Map<String, Object>>>() {
-                }
+                formattedUrl, HttpMethod.GET, requestEntity, new ParameterizedTypeReference<List<Map<String, Object>>>() {}
         );
 
-        // Extract PR titles from active PRs
-        List<String> prNames = response.getBody().stream()
+        // Extract PR titles and creation dates from active PRs
+        List<Map<String, String>> prDetails = response.getBody().stream()
                 .filter(pr -> "open".equals(pr.get("state")))
-                .map(pr -> (String) pr.get("title"))
+                .map(pr -> Map.of(
+                        "title", (String) pr.get("title"),
+                        "creation_date", (String) pr.get("created_at")
+                ))
                 .collect(Collectors.toList());
 
-        return ResponseEntity.ok(prNames);
+        return ResponseEntity.ok(prDetails);
     }
 
     @GetMapping("/generate-contract-test-cases")
