@@ -250,21 +250,25 @@ public class ChatGptService {
         }
     }
 
-    public void updateContractTestCasesInDB(String swaggerFileName, List<Map.Entry<String, String>> updatedContractTestCases) {
-        for (Map.Entry<String, String> testCaseEntry : updatedContractTestCases) {
-            String updatedContent = testCaseEntry.getKey();     // Updated content
-            String originalContent = testCaseEntry.getValue();  // Existing content in the database
+    public void updateContractTestCasesInDB(List<Map<String, String>> updatedTestCases) {
+        for (Map<String, String> testCaseMap : updatedTestCases) {
+            String testId = testCaseMap.get("id");
+            String newContent = testCaseMap.get("tc_new");
 
-            // Find the existing test case by swagger file name and original content
-            Optional<ContractTestCase> existingTestCaseOpt = contractTestCaseRepository
-                    .findByFileNameAndTestCaseContent(swaggerFileName, originalContent);
+            // Fetch the existing test case by ID
+            Optional<ContractTestCase> optionalTestCase = contractTestCaseRepository.findById(Long.valueOf(testId));
 
-            if (existingTestCaseOpt.isPresent()) {
-                ContractTestCase existingTestCase = existingTestCaseOpt.get();
-                existingTestCase.setTestCaseContent(updatedContent);  // Update with new content
-                contractTestCaseRepository.save(existingTestCase);     // Save the updated test case
+            if (optionalTestCase.isPresent()) {
+                ContractTestCase existingTestCase = optionalTestCase.get();
+
+                // Update the test case content
+                existingTestCase.setTestCaseContent(newContent);
+
+                // Save the updated test case back to the database
+                contractTestCaseRepository.save(existingTestCase);
             } else {
-                System.out.println("Test case with original content not found.");
+                // Log or handle the case where the test case ID does not exist
+                System.out.println("Test case with ID " + testId + " not found.");
             }
         }
     }
@@ -298,7 +302,7 @@ public class ChatGptService {
         return markdownContent;
     }
 
-    public List<Map.Entry<String, String>> generateUpdatedContractTestCases(String swaggerFileName, String prCodeChanges, String initialSwaggerContent) {
+    public List<Map<String, String>> generateUpdatedContractTestCases(String swaggerFileName, String prCodeChanges, String initialSwaggerContent) {
         String apiUrl = "https://api.openai.com/v1/chat/completions";
 
         HttpHeaders headers = new HttpHeaders();
@@ -383,20 +387,24 @@ public class ChatGptService {
 
         List<String> testCasesList = splitTestCases(testCaseContent);
 
-        List<Map.Entry<String, String>> combinedList = new ArrayList<>();
+        List<Map<String, String>> combinedList = new ArrayList<>();
 
         for (int i = 0; i < testCasesList.size(); i++) {
-            if (!testCasesList.get(i).equals(existingTestCases.get(i).getTestCaseContent())) {
-                combinedList.add(new AbstractMap.SimpleEntry<>(testCasesList.get(i), existingTestCases.get(i).getTestCaseContent()));
-            }
-
+            String newTestCase = testCasesList.get(i);
+            String oldTestCase = existingTestCases.get(i).getTestCaseContent();
+            String id = String.valueOf(existingTestCases.get(i).getId());
+            Map<String, String> jsonEntry = new HashMap<>();
+            jsonEntry.put("id", id);
+            jsonEntry.put("tc_old", oldTestCase);
+            jsonEntry.put("tc_new", newTestCase);
+            combinedList.add(jsonEntry);
         }
 
         return combinedList;
     }
 
-    public List<Map.Entry<String, String>> updateContractTestCases(String prCodeChanges, String swaggerFileName, String initialSwaggerContent) {
-        List<Map.Entry<String, String>> newTestCases = generateUpdatedContractTestCases(swaggerFileName, prCodeChanges, initialSwaggerContent);
+    public List<Map<String, String>> updateContractTestCases(String prCodeChanges, String swaggerFileName, String initialSwaggerContent) {
+        List<Map<String, String>> newTestCases = generateUpdatedContractTestCases(swaggerFileName, prCodeChanges, initialSwaggerContent);
         return newTestCases;
     }
 

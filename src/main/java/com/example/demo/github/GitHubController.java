@@ -244,7 +244,7 @@ public class GitHubController {
             @RequestParam String owner,
             @RequestParam String repo_name,
             @RequestParam String access_token,
-            @RequestBody List<Map.Entry<String,String>> updatedContractTestCases) {
+            @RequestBody List<Map<String,String>> updatedContractTestCases) {
 
         // Check if the received list is empty
         if (updatedContractTestCases == null || updatedContractTestCases.isEmpty()) {
@@ -255,7 +255,7 @@ public class GitHubController {
         Map<String, String> fileContents = fetchAllFilesFromRepo(owner, repo_name, access_token);
         Result result = getResult(fileContents);
 
-        chatGptService.updateContractTestCasesInDB(result.fileName(), updatedContractTestCases);
+        chatGptService.updateContractTestCasesInDB(updatedContractTestCases);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body("Contract test cases have been saved successfully.");
@@ -300,7 +300,7 @@ public class GitHubController {
         // Step 5: Retrieve the original Swagger file content (before changes)
         String swaggerContent = getOriginalSwaggerContent(owner, repo_name, access_token);
         // Step 6: Call the OpenAI service method to get updated contract test cases
-        List<Map.Entry<String, String>> updatedTestCases = chatGptService.updateContractTestCases(prCodeChanges, swaggerFileName, swaggerContent);
+        List<Map<String, String>> updatedTestCases = chatGptService.updateContractTestCases(prCodeChanges, swaggerFileName, swaggerContent);
 
         // Step 7: Return the list of updated test cases
         return ResponseEntity.ok(updatedTestCases);
