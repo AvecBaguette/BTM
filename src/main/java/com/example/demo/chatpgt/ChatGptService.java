@@ -177,58 +177,64 @@ public class ChatGptService {
 
         // Prompt to generate manual contract test cases from Swagger content
         String prompt = String.format("""
-                Generate initial contract test cases based on the following Swagger file content:
-                                
-                Swagger File Content:
-                %s
-                                
-                Please focus on covering the following aspects:
-                                
-                - Endpoint coverage, ensuring each endpoint has at least one test case.
-                - Request and response validation, including expected status codes and response structures.
-                - Required and optional parameters, along with any specific constraints or validation rules.
-                - Expected outcomes based on each endpoint’s purpose.
-                - After every section, after the ":" there is an example or explanation of what you need to generate
-                                
-                Use the following structure for each test case and ensure each field is formatted using appropriate Markdown:
+    Generate a comprehensive set of initial contract test cases based on the following Swagger file content:
 
-                Test Case Structure:
-                    ## Test Case ID: Unique identifier for the test case (e.g., `TC_EndpointName_StatusCode`)
-                    - **Endpoint**: Full URL path for the API endpoint
-                    - **Description**: Brief description of what this test case validates
-                    - **Preconditions**: Any setup or prerequisites required before executing the test
-                    
-                    - **Request Data**:
-                        * **Method**: HTTP method (e.g., GET, POST)
-                        * **Headers**: Required headers with example values
-                        * **Body Parameters**: List of parameters with sample values (if applicable)
-                    
-                    - **Expected Response**:
-                        * **Status Code**: Expected HTTP status code (e.g., 200, 400)
-                        * **Response Body**: Example structure of the expected response, formatted in a JSON code block
-                    
-                    ```
-                      {
-                        "key": "value".
-                        "anotherKey": "anotherValue"
-                      }
-                    ```
-                    
-                    - **Validation Rules**: Key response elements to validate, such as presence of specific fields, data types, or constraints.
-                                
-                Ensure each test case is provided in a well-structured Markdown format. Use:
-                - Double hashes (`##`) for the test case ID as a header.
-                - Bold formatting (using `**`) for each field label (e.g., **Endpoint**, **Description**).
-                - Code blocks (using triple backticks) for JSON data in the **Response Body** section.
+    Swagger File Content:
+    %s
 
-                Please start directly with the first test case in the response and no additional text beforehand. Separate each test case by the following row exactly written like this:
-                ROW_SEPARATOR
-                """, swaggerContent);
+    ### Instructions:
+    - Analyze the Swagger file to identify all endpoints, methods, and associated response codes.
+    - For each method in the file, generate test cases for the following:
+      1. **Successful scenarios**: At least one test case for each success response code (e.g., 200, 201).
+      2. **Error scenarios**: At least one test case for each error response code (e.g., 400, 404).
+      3. **Edge cases**:
+         - For query parameters: Include boundary values, invalid inputs, and missing parameters.
+         - For body parameters: Test required fields, invalid data types, and missing fields.
+    - Ensure test cases include:
+      - Endpoint and HTTP method.
+      - Request details (headers, query/body parameters, etc.).
+      - Expected response (status code, headers, and response body schema).
+      - Validation rules for the response (schema compliance, specific fields).
+
+    ### Test Case Structure:
+    Use the following structure and format for each test case:
+
+    ## Test Case ID: Unique identifier (e.g., `TC_<EndpointName>_<StatusCode>`)
+
+    - **Endpoint**: Full API endpoint path (e.g., `/api/v1/resource`)
+    - **Description**: Brief description of the test case's purpose.
+    - **Preconditions**: Any setup or prerequisites.
+    - **Request Data**:
+      - **Method**: HTTP method (e.g., GET, POST)
+      - **Headers**: Required headers with example values.
+      - **Query Parameters**: Examples for valid and invalid values (if applicable).
+      - **Body Parameters**: Sample payload for POST/PUT requests (if applicable).
+    - **Expected Response**:
+      - **Status Code**: Expected HTTP status code (e.g., 200, 400).
+      - **Response Body**: Example JSON structure:
+        ```
+        {
+          "key": "value",
+          "anotherKey": "anotherValue"
+        }
+        ```
+      - **Headers**: Required response headers (e.g., `Content-Type: application/json`).
+    - **Validation Rules**:
+      - Validate the presence and correctness of key response elements (e.g., fields, data types).
+      - Ensure the response complies with the schema defined in the Swagger file.
+
+    ### Additional Notes:
+    - Generate **all necessary test cases** based on the file, covering every endpoint and response code.
+    - Each test case must focus on **one specific scenario** (e.g., valid query, missing parameter, invalid ID).
+    - Use Markdown formatting and separate each test case with the exact followin string: `ROW_SEPARATOR`.
+
+    Begin directly with the first test case and include all required test cases, adhering to the structure above.
+""", swaggerContent);
 
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", "gpt-3.5-turbo");
         requestBody.put("messages", List.of(Map.of("role", "user", "content", prompt)));
-        requestBody.put("temperature", 0.7);
+        requestBody.put("temperature", 0.0);
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
@@ -320,61 +326,73 @@ public class ChatGptService {
 
         // Construct the prompt with existing test cases included
         String prompt = String.format("""
-                Review the following inputs to update the contract test cases:
+    Update the existing contract test cases based on the following inputs:
 
-                Original Swagger File Content (Before Changes):
-                %s
+    ### Inputs:
+    1. **Initial Swagger File Content**:
+    %s
 
-                Swagger File Changes from PR:
-                %s
+    2. **PR Changes**:
+    These are the changes made to the Swagger file in the pull request. Analyze these changes and determine how they affect the test cases:
+    %s
 
-                Existing Contract Test Cases:
-                %s
+    3. **Existing Test Cases in the Database**:
+    These are the current test cases stored in the database:
+    %s
 
-                Based on these details, please update the contract test cases to reflect the changes. Focus on the following:
+    ### Instructions:
+    - Analyze the PR changes to identify the endpoints, methods, or response codes that have been modified or removed.
+    - For affected test cases:
+      1. If the PR removes an endpoint, method, or response code, delete the corresponding test case.
+      2. If the PR modifies an endpoint, method, or response code, update the corresponding test case fields (e.g., `Expected Response`, `Validation Rules`).
+    - For test cases unrelated to the PR changes, return them **unchanged and in the exact same order**.
 
-                - Adjusting any endpoint coverage, request/response validation, or parameter requirements that have changed.
-                - Adding new test cases if new endpoints, parameters, or response structures were introduced.
-                - Removing or modifying test cases where requirements were removed or changed.
-                - Ensure the updated test cases maintain comprehensive coverage of the updated API specification,
-                accurately validate requests and responses, and reflect any new required or optional parameters and expected outcomes.
-                - Keep the markdown structure in place and only update testcases IF NEEDED based on the changes, if not needed, let the tests as they are
-                - Always return the full list of testcases, whether they were updated or not
-                                
-                Make sure to keep the following test case structure in place as the existing testcases were created based on this structure:
-                                
-                Test Case Structure:
-                    ## Test Case ID: Unique identifier for the test case (e.g., `TC_EndpointName_StatusCode`)
-                    - **Endpoint**: Full URL path for the API endpoint
-                    - **Description**: Brief description of what this test case validates
-                    - **Preconditions**: Any setup or prerequisites required before executing the test
-                    
-                    - **Request Data**:
-                        * **Method**: HTTP method (e.g., GET, POST)
-                        * **Headers**: Required headers with example values
-                        * **Body Parameters**: List of parameters with sample values (if applicable)
-                    
-                    - **Expected Response**:
-                        * **Status Code**: Expected HTTP status code (e.g., 200, 400)
-                        * **Response Body**: Example structure of the expected response, formatted in a JSON code block
-                    
-                    ```
-                      {
-                        "key": "value".
-                        "anotherKey": "anotherValue"
-                      }
-                    ```
-                    
-                    - **Validation Rules**: Key response elements to validate, such as presence of specific fields, data types, or constraints.
-                    
-                Please start directly with the first test case in the response and no additional text beforehand. Separate each test case by the following row exactly written like this:
-                ROW_SEPARATOR
-                """, initialSwaggerContent, prCodeChanges, existingTestCasesText);
+    ### Output Requirements:
+    - Return the full updated list of test cases in the exact same order as the input list.
+    - If a test case is removed, exclude it from the final output.
+    - Use Markdown formatting for each test case.
+
+    ### Test Case Structure:
+    Ensure all test cases adhere to the following format:
+    
+    ### Test Case Structure:
+    Use the following structure and format for each test case:
+
+    ## Test Case ID: Unique identifier (e.g., `TC_<EndpointName>_<StatusCode>`)
+
+    - **Endpoint**: Full API endpoint path (e.g., `/api/v1/resource`)
+    - **Description**: Brief description of the test case's purpose.
+    - **Preconditions**: Any setup or prerequisites.
+    - **Request Data**:
+      - **Method**: HTTP method (e.g., GET, POST)
+      - **Headers**: Required headers with example values.
+      - **Query Parameters**: Examples for valid and invalid values (if applicable).
+      - **Body Parameters**: Sample payload for POST/PUT requests (if applicable).
+    - **Expected Response**:
+      - **Status Code**: Expected HTTP status code (e.g., 200, 400).
+      - **Response Body**: Example JSON structure:
+        ```
+        {
+          "key": "value",
+          "anotherKey": "anotherValue"
+        }
+        ```
+      - **Headers**: Required response headers (e.g., `Content-Type: application/json`).
+    - **Validation Rules**:
+      - Validate the presence and correctness of key response elements (e.g., fields, data types).
+      - Ensure the response complies with the schema defined in the Swagger file.
+
+    ### Notes:
+    - Ensure the output contains the full updated list of test cases in the correct order.
+    - Do not add or modify unrelated test cases.
+    - Ensure that the output is formatted consistently and directly includes the test cases.
+    - Use Markdown formatting and separate each test case with the exact followin string: `ROW_SEPARATOR`.
+""", initialSwaggerContent, prCodeChanges, existingTestCases);
 
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", "gpt-3.5-turbo");
         requestBody.put("messages", List.of(Map.of("role", "user", "content", prompt)));
-        requestBody.put("temperature", 0.7);
+        requestBody.put("temperature", 0.0);
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
