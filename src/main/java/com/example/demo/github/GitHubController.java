@@ -1,6 +1,8 @@
 package com.example.demo.github;
 
 import com.example.demo.chatpgt.ChatGptService;
+import com.example.demo.database.entities.ContractTestCase;
+import com.example.demo.database.repositories.ContractTestCaseRepository;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
@@ -21,6 +23,9 @@ public class GitHubController {
 
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    private ContractTestCaseRepository contractTestCaseRepository;
 
     @GetMapping("/generate-ai-test-cases")
     public ResponseEntity<String> generateAiTestCases(@RequestParam String owner, @RequestParam String repo, @RequestParam String accessToken) {
@@ -370,4 +375,23 @@ public class GitHubController {
         // Default to "swagger.json" if none found in code changes (adjust as needed)
         return "swagger.json";
     }
+
+    @GetMapping("/contract-test-cases")
+    public ResponseEntity<List<Map<String, String>>> getAllTestCases() {
+        // Retrieve test cases from the database (Assuming 'testCaseRepository' is your JPA repository)
+        List<ContractTestCase> testCases = contractTestCaseRepository.findAll();
+
+        // Map the test cases to the desired JSON structure
+        List<Map<String, String>> response = testCases.stream().map(testCase -> {
+            Map<String, String> testCaseJson = new HashMap<>();
+            testCaseJson.put("id", String.valueOf(testCase.getId())); // Assuming `getId` returns a Long or similar
+            testCaseJson.put("title", testCase.getFileName()); // Assuming `getTitle` exists
+            testCaseJson.put("content", testCase.getTestCaseContent()); // Assuming `getDescription` exists
+            return testCaseJson;
+        }).collect(Collectors.toList());
+
+        // Return the response
+        return ResponseEntity.ok(response);
+    }
+
 }
