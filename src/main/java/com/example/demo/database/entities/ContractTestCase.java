@@ -11,14 +11,26 @@ public class ContractTestCase {
 
     private String fileName;
 
+    private String title;
+
+    private String testRepo;
+
     @Lob
     private String testCaseContent;
 
     public ContractTestCase() {}
 
-    public ContractTestCase(String fileName, String testCaseContent) {
+    public ContractTestCase(String fileName, String testCaseContent, String testCaseTitle) {
         this.fileName = fileName;
         this.testCaseContent = testCaseContent;
+        this.title = testCaseTitle;
+    }
+
+    public ContractTestCase(String fileName, String testCaseContent, String testCaseTitle, String testRepo) {
+        this.fileName = fileName;
+        this.testCaseContent = testCaseContent;
+        this.title = testCaseTitle;
+        this.testRepo = testRepo;
     }
 
     public Long getId() {
@@ -35,6 +47,22 @@ public class ContractTestCase {
 
     public void setFileName(String fileName) {
         this.fileName = fileName;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getTestRepo() {
+        return testRepo;
+    }
+
+    public void setTestRepo(String testRepo) {
+        this.testRepo = testRepo;
     }
 
     public String getTestCaseContent() {

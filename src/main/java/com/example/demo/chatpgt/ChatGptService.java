@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class ChatGptService {
@@ -249,14 +251,35 @@ public class ChatGptService {
         return splitTestCases(testCaseContent);
     }
 
-    public void saveContractTestsCasesToDB(String swaggerFileName, List<String> contractTestCases) {
+    public void saveContractTestsCasesToDB(String swaggerFileName, List<String> contractTestCases, String repoName) {
         for (String testCase : contractTestCases) {
-            ContractTestCase testCaseEntity = new ContractTestCase(swaggerFileName, testCase);
+            // Extract the Test Case ID from the test case content
+            String testCaseId = extractTestCaseId(testCase);
+
+            // Save the test case with its ID as the title
+            ContractTestCase testCaseEntity = new ContractTestCase(swaggerFileName, testCase, testCaseId, repoName);
             contractTestCaseRepository.save(testCaseEntity);
         }
     }
 
-    public void updateContractTestCasesInDB(List<Map<String, String>> updatedTestCases) {
+    /**
+     * Extracts the Test Case ID from the test case content.
+     * Assumes the ID follows the format: "## Test Case ID: Unique identifier"
+     */
+    private String extractTestCaseId(String testCase) {
+        String testCaseId = "Untitled"; // Default title if ID is not found
+        String pattern = "## Test Case ID: ([^\\n]+)";
+        Pattern regex = Pattern.compile(pattern);
+        Matcher matcher = regex.matcher(testCase);
+
+        if (matcher.find()) {
+            testCaseId = matcher.group(1).trim();
+        }
+
+        return testCaseId;
+    }
+
+    public void updateContractTestCasesInDB(List<Map<String, String>> updatedTestCases, String repoName) {
         for (Map<String, String> testCaseMap : updatedTestCases) {
             String testId = testCaseMap.get("id");
             String newContent = testCaseMap.get("tc_new");
@@ -269,6 +292,11 @@ public class ChatGptService {
 
                 // Update the test case content
                 existingTestCase.setTestCaseContent(newContent);
+
+                // Extract the new Test Case ID from the updated content
+                String newTestCaseId = extractTestCaseId(newContent);
+                existingTestCase.setTitle(newTestCaseId); // Assuming 'title' is the field for the test case ID
+                existingTestCase.setTestRepo(repoName);
 
                 // Save the updated test case back to the database
                 contractTestCaseRepository.save(existingTestCase);

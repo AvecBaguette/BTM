@@ -238,7 +238,7 @@ public class GitHubController {
         Map<String, String> fileContents = fetchAllFilesFromRepo(owner, repo_name, access_token);
         Result result = getResult(fileContents);
 
-        chatGptService.saveContractTestsCasesToDB(result.fileName(), contractTestCases);
+        chatGptService.saveContractTestsCasesToDB(result.fileName(), contractTestCases, repo_name);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body("Contract test cases have been saved successfully.");
@@ -260,7 +260,7 @@ public class GitHubController {
         Map<String, String> fileContents = fetchAllFilesFromRepo(owner, repo_name, access_token);
         Result result = getResult(fileContents);
 
-        chatGptService.updateContractTestCasesInDB(updatedContractTestCases);
+        chatGptService.updateContractTestCasesInDB(updatedContractTestCases, repo_name);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body("Contract test cases have been saved successfully.");
@@ -377,16 +377,23 @@ public class GitHubController {
     }
 
     @GetMapping("/contract-test-cases")
-    public ResponseEntity<List<Map<String, String>>> getAllTestCases() {
-        // Retrieve test cases from the database (Assuming 'testCaseRepository' is your JPA repository)
-        List<ContractTestCase> testCases = contractTestCaseRepository.findAll();
+    public ResponseEntity<List<Map<String, String>>> getAllTestCases(
+            @RequestParam(value = "test_repo", required = false) String testRepo) {
+        List<ContractTestCase> testCases;
+
+        // Retrieve test cases based on whether testRepo is provided
+        if (testRepo != null && !testRepo.isEmpty()) {
+            testCases = contractTestCaseRepository.findByTestRepo(testRepo);
+        } else {
+            testCases = contractTestCaseRepository.findAll();
+        }
 
         // Map the test cases to the desired JSON structure
         List<Map<String, String>> response = testCases.stream().map(testCase -> {
             Map<String, String> testCaseJson = new HashMap<>();
-            testCaseJson.put("id", String.valueOf(testCase.getId())); // Assuming `getId` returns a Long or similar
-            testCaseJson.put("title", testCase.getFileName()); // Assuming `getTitle` exists
-            testCaseJson.put("content", testCase.getTestCaseContent()); // Assuming `getDescription` exists
+            testCaseJson.put("id", String.valueOf(testCase.getId()));
+            testCaseJson.put("title", testCase.getTitle());
+            testCaseJson.put("content", testCase.getTestCaseContent());
             return testCaseJson;
         }).collect(Collectors.toList());
 
