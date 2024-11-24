@@ -171,83 +171,157 @@ public class ChatGptService {
     }
 
     public List<String> generateInitialContractTestCases(String swaggerName, String swaggerContent) {
-        String apiUrl = "https://api.openai.com/v1/chat/completions";
+        // Build the prompt for Gemini
+        String prompt = """
+        Generate one contract test case for each endpoint and each response status code explicitly defined in the provided Swagger (OpenAPI) specification. Adhere strictly to the following structure and ensure the following rules are met:
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(openAiApiKey);
-        headers.setContentType(MediaType.APPLICATION_JSON);
+        ## Rules
+        1. Generate **one test case for each combination of endpoint and response status code** explicitly defined in the Swagger specification.
+        2. Use the exact `ROW_SEPARATOR` string to separate test cases.
+        3. Ensure the output adheres strictly to the format in the example provided below.
+        4. Use meaningful preconditions, request data, and validation rules based on the Swagger file.
+        5. Include both positive and negative scenarios only when explicitly specified in the Swagger file.
+        6. Do not create test cases for response codes that are not listed in the Swagger file.
+        7. Ensure all fields are filled using data from the Swagger file, including examples where available.
 
-        // Prompt to generate manual contract test cases from Swagger content
-        String prompt = String.format("""
-    Generate a comprehensive set of initial contract test cases based on the following Swagger file content:
-
-    Swagger File Content:
-    %s
-
-    ### Instructions:
-    - Analyze the Swagger file to identify all endpoints, methods, and associated response codes.
-    - For each method in the file, generate test cases for the following:
-      1. **Successful scenarios**: At least one test case for each success response code (e.g., 200, 201).
-      2. **Error scenarios**: At least one test case for each error response code (e.g., 400, 404).
-      3. **Edge cases**:
-         - For query parameters: Include boundary values, invalid inputs, and missing parameters.
-         - For body parameters: Test required fields, invalid data types, and missing fields.
-    - Ensure test cases include:
-      - Endpoint and HTTP method.
-      - Request details (headers, query/body parameters, etc.).
-      - Expected response (status code, headers, and response body schema).
-      - Validation rules for the response (schema compliance, specific fields).
-
-    ### Test Case Structure:
-    Use the following structure and format for each test case:
-
-    ## Test Case ID: Unique identifier (e.g., `TC_<EndpointName>_<StatusCode>`)
-
-    - **Endpoint**: Full API endpoint path (e.g., `/api/v1/resource`)
-    - **Description**: Brief description of the test case's purpose.
-    - **Preconditions**: Any setup or prerequisites.
-    - **Request Data**:
-      - **Method**: HTTP method (e.g., GET, POST)
-      - **Headers**: Required headers with example values.
-      - **Query Parameters**: Examples for valid and invalid values (if applicable).
-      - **Body Parameters**: Sample payload for POST/PUT requests (if applicable).
-    - **Expected Response**:
-      - **Status Code**: Expected HTTP status code (e.g., 200, 400).
-      - **Response Body**: Example JSON structure:
+        ## Example Input
+        Swagger Specification:
         ```
         {
-          "key": "value",
-          "anotherKey": "anotherValue"
+          "openapi": "3.0.0",
+          "paths": {
+            "/example": {
+              "get": {
+                "summary": "Retrieve example",
+                "responses": {
+                  "200": {
+                    "description": "Successful response",
+                    "content": {
+                      "application/json": {
+                        "example": { "id": 1, "name": "example" }
+                      }
+                    }
+                  },
+                  "404": {
+                    "description": "Example not found"
+                  }
+                }
+              }
+            }
+          }
         }
         ```
-      - **Headers**: Required response headers (e.g., `Content-Type: application/json`).
-    - **Validation Rules**:
-      - Validate the presence and correctness of key response elements (e.g., fields, data types).
-      - Ensure the response complies with the schema defined in the Swagger file.
 
-    ### Additional Notes:
-    - Generate **all necessary test cases** based on the file, covering every endpoint and response code.
-    - Each test case must focus on **one specific scenario** (e.g., valid query, missing parameter, invalid ID).
-    - Use Markdown formatting and separate each test case with the exact followin string: `ROW_SEPARATOR`.
+        ## Example Output
+        ### Test Case ID: TC_example_200
 
-    Begin directly with the first test case and include all required test cases, adhering to the structure above.
-""", swaggerContent);
+        - **Endpoint**: /example
+        - **Description**: Verify successful retrieval of an example.
+        - **Preconditions**: Ensure the example resource exists.
+        - **Request Data**:
+            - **Method**: GET
+            - **Headers**: Content-Type: application/json
+            - **Query Parameters**: N/A
+            - **Path Parameters**: N/A
+            - **Body Parameters**: N/A
+        - **Expected Response**:
+            - **Status Code**: 200
+            - **Response Body**:
+                ```
+                {
+                  "id": 1,
+                  "name": "example"
+                }
+                ```
+            - **Headers**: Content-Type: application/json
+        - **Validation Rules**:
+            - Schema validation for the response body.
+            - Ensure `id` and `name` fields are present and of correct type.
+            - Positive scenario with valid data.
 
+        ROW_SEPARATOR
+
+        ### Test Case ID: TC_example_404
+
+        - **Endpoint**: /example
+        - **Description**: Verify error response when the requested example is not found.
+        - **Preconditions**: No example resource exists with the specified ID.
+        - **Request Data**:
+            - **Method**: GET
+            - **Headers**: Content-Type: application/json
+            - **Query Parameters**: N/A
+            - **Path Parameters**: N/A
+            - **Body Parameters**: N/A
+        - **Expected Response**:
+            - **Status Code**: 404
+            - **Response Body**: N/A
+            - **Headers**: N/A
+        - **Validation Rules**:
+            - Verify the response status code is 404.
+            - Negative scenario for a non-existent resource.
+
+        ROW_SEPARATOR
+
+        Now, based on the provided Swagger specification, generate test cases in the same format as the example output. Use only the response codes explicitly defined in the Swagger file for each endpoint. Ensure strict adherence to the `ROW_SEPARATOR` and test case structure.
+        Here is the Swagger file content:
+        """ + swaggerContent;
+
+
+        // Gemini API configuration
+
+        String geminiApiKey = "AIzaSyDtjPcQ9ikOzehH1nEA7o3fFIWx-ISZDVo";
+        String geminiApiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=" + geminiApiKey;
+
+        // Prepare the request body
         Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", "gpt-3.5-turbo");
-        requestBody.put("messages", List.of(Map.of("role", "user", "content", prompt)));
-        requestBody.put("temperature", 0.0);
+        requestBody.put("contents", List.of(
+                Map.of("parts", List.of(Map.of("text", prompt)))
+        ));
 
+        // Set up headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        // Create the HTTP entity
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
-        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, new ParameterizedTypeReference<Map<String, Object>>() {
-        });
+        // Send the request
+        RestTemplate restTemplate = new RestTemplate();
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                geminiApiUrl,
+                HttpMethod.POST,
+                entity,
+                new ParameterizedTypeReference<>() {}
+        );
 
-        Map<String, Object> choices = (Map<String, Object>) ((List<?>) response.getBody().get("choices")).get(0);
-        String testCaseContent = (String) ((Map<String, Object>) choices.get("message")).get("content");
+        // https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent
+        // Handle the response
+        Map<String, Object> responseBody = response.getBody();
 
+// Extract the "candidates" list from the response
+        List<Map<String, Object>> candidates = (List<Map<String, Object>>) responseBody.get("candidates");
 
-        // Split the test cases from the response content and return it
+// Ensure there is at least one candidate
+        if (candidates == null || candidates.isEmpty()) {
+            throw new RuntimeException("No candidates found in response.");
+        }
+
+// Extract the "content" from the first candidate
+        Map<String, Object> content = (Map<String, Object>) candidates.get(0).get("content");
+        if (content == null || content.isEmpty()) {
+            throw new RuntimeException("No content found in the first candidate.");
+        }
+
+// Extract the "parts" list from the content
+        List<Map<String, Object>> parts = (List<Map<String, Object>>) content.get("parts");
+        if (parts == null || parts.isEmpty()) {
+            throw new RuntimeException("No parts found in content.");
+        }
+
+// Extract the "text" field from the first part
+        String testCaseContent = (String) parts.get(0).get("text");
+
+        // Split the test cases by ROW_SEPARATOR
         return splitTestCases(testCaseContent);
     }
 
@@ -336,99 +410,203 @@ public class ChatGptService {
         return markdownContent;
     }
 
-    public List<Map<String, String>> generateUpdatedContractTestCases(String swaggerFileName, String prCodeChanges, String initialSwaggerContent) {
-        String apiUrl = "https://api.openai.com/v1/chat/completions";
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(openAiApiKey);
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
+    public List<Map<String, String>> generateUpdatedContractTestCases(String swaggerFileName, String updatedSwaggerFile, String initialSwaggerFile) {
         List<ContractTestCase> existingTestCases = contractTestCaseRepository.findByFileName(swaggerFileName);
         StringBuilder existingTestCasesText = new StringBuilder();
 
         // Format the existing test cases into a string to include in the prompt
-        existingTestCasesText.append("Here are the existing test cases:\n");
         for (ContractTestCase testCase : existingTestCases) {
             existingTestCasesText.append(testCase.getTestCaseContent()).append("\n\n");
         }
 
         // Construct the prompt with existing test cases included
-        String prompt = String.format("""
-    Update the existing contract test cases based on the following inputs:
+        String prompt = """
+Compare the 2 Swagger files and update the testcase list as needed based on Swagger changes.
+There are 4 possible cases: test cases that stay the same (SAME),
+test cases that need update (UPDATED), test cases that were added (ADDED),
+test cases that were deleted (DELETED).
 
-    ### Inputs:
-    1. **Initial Swagger File Content**:
-    %s
+Swagger before changes:
+""" + initialSwaggerFile + """
 
-    2. **PR Changes**:
-    These are the changes made to the Swagger file in the pull request. Analyze these changes and determine how they affect the test cases:
-    %s
+Swagger after changes:
+""" + updatedSwaggerFile + """
 
-    3. **Existing Test Cases in the Database**:
-    These are the current test cases stored in the database:
-    %s
+Existing test cases:
+""" + existingTestCasesText + """
 
-    ### Instructions:
-    - Analyze the PR changes to identify the endpoints, methods, or response codes that have been modified or removed.
-    - For affected test cases:
-      1. If the PR removes an endpoint, method, or response code, delete the corresponding test case.
-      2. If the PR modifies an endpoint, method, or response code, update the corresponding test case fields (e.g., `Expected Response`, `Validation Rules`).
-    - For test cases unrelated to the PR changes, return them **unchanged and in the exact same order**.
+## Instructions:
+1. Compare the two Swagger files (`Swagger before changes` and `Swagger after changes`) to identify:
+   - New endpoints or responses added.
+   - Endpoints or responses deleted.
+   - Any changes to endpoints or response details (e.g., updated status codes, descriptions, or schemas).
+   - Endpoints or responses that remain unchanged.
 
-    ### Output Requirements:
-    - Return the full updated list of test cases in the exact same order as the input list.
-    - If a test case is removed, exclude it from the final output.
-    - Use Markdown formatting for each test case.
+2. Update the test cases accordingly:
+   - **SAME**: If a test case is unaffected by the changes, keep it the same.
+   - **UPDATED**: If a test case is affected by a change (e.g., updated response description or status code), update the test case to reflect the new details.
+   - **ADDED**: For new endpoints or responses in the Swagger, add new test cases.
+   - **DELETED**: For deleted endpoints or responses, mark the test case with "ChangeType: DELETED" and include only the test case ID in the output.
 
-    ### Test Case Structure:
-    Ensure all test cases adhere to the following format:
-    
-    ### Test Case Structure:
-    Use the following structure and format for each test case:
+3. Output format:
+   - Use the same structure as provided in the example below.
+   - For new test cases (ADDED), include the full test case details.
+   - For updated test cases (UPDATED), ensure the changes are highlighted in the test case details.
+   - For deleted test cases (DELETED), only the test case ID and "ChangeType: DELETED" should appear.
 
-    ## Test Case ID: Unique identifier (e.g., `TC_<EndpointName>_<StatusCode>`)
+## Example:
+### Test Case ID: TC_accounts_get_200
+- Endpoint: /accounts
+- Description: Verify successful retrieval of all accounts.
+- Preconditions: Ensure at least one account exists in the database.
+- Request Data:
+    - Method: GET
+    - Headers: Content-Type: application/json
+    - Query Parameters: N/A
+    - Path Parameters: N/A
+    - Body Parameters: N/A
+- Expected Response:
+    - Status Code: 200
+    - Response Body: A list of account objects with "id" and "balance".
+    - Headers: Content-Type: application/json
+- Validation Rules:
+    - Schema validation for the response body.
+    - Ensure the response is an array of Account objects.
+- ChangeType: SAME
 
-    - **Endpoint**: Full API endpoint path (e.g., `/api/v1/resource`)
-    - **Description**: Brief description of the test case's purpose.
-    - **Preconditions**: Any setup or prerequisites.
-    - **Request Data**:
-      - **Method**: HTTP method (e.g., GET, POST)
-      - **Headers**: Required headers with example values.
-      - **Query Parameters**: Examples for valid and invalid values (if applicable).
-      - **Body Parameters**: Sample payload for POST/PUT requests (if applicable).
-    - **Expected Response**:
-      - **Status Code**: Expected HTTP status code (e.g., 200, 400).
-      - **Response Body**: Example JSON structure:
-        ```
-        {
-          "key": "value",
-          "anotherKey": "anotherValue"
-        }
-        ```
-      - **Headers**: Required response headers (e.g., `Content-Type: application/json`).
-    - **Validation Rules**:
-      - Validate the presence and correctness of key response elements (e.g., fields, data types).
-      - Ensure the response complies with the schema defined in the Swagger file.
+ROW_SEPARATOR
 
-    ### Notes:
-    - Ensure the output contains the full updated list of test cases in the correct order.
-    - Do not add or modify unrelated test cases.
-    - Ensure that the output is formatted consistently and directly includes the test cases.
-    - Use Markdown formatting and separate each test case with the exact followin string: `ROW_SEPARATOR`.
-""", initialSwaggerContent, prCodeChanges, existingTestCases);
+### Test Case ID: TC_accounts_post_201
+- Endpoint: /accounts
+- Description: Verify successful addition of a new account.
+- Preconditions: Ensure the account does not already exist.
+- Request Data:
+    - Method: POST
+    - Headers: Content-Type: application/json
+    - Query Parameters: N/A
+    - Path Parameters: N/A
+    - Body Parameters: A valid account object.
+- Expected Response:
+    - Status Code: 201
+    - Response Body: A success message indicating the account was added successfully.
+    - Headers: Content-Type: application/json
+- Validation Rules:
+    - Verify the response status code is 201.
+    - Verify the response body contains the success message.
+- ChangeType: SAME
 
+ROW_SEPARATOR
+
+### Test Case ID: TC_accounts_accountId_get_200
+- Endpoint: /accounts/{accountId}
+- Description: Verify successful retrieval of account details.
+- Preconditions: Ensure the accountId exists in the database.
+- Request Data:
+    - Method: GET
+    - Headers: Content-Type: application/json
+    - Query Parameters: N/A
+    - Path Parameters: accountId=123
+    - Body Parameters: N/A
+- Expected Response:
+    - Status Code: 200
+    - Response Body: An account object with "id" and "balance".
+    - Headers: Content-Type: application/json
+- Validation Rules:
+    - Schema validation for the response body.
+    - Ensure the response contains the correct account details.
+- ChangeType: UPDATED
+
+ROW_SEPARATOR
+
+### Test Case ID: TC_accounts_accountId_get_404
+- ChangeType: ADDED
+
+ROW_SEPARATOR
+
+### Test Case ID: TC_transactions_get_200
+- ChangeType: DELETED
+
+ROW_SEPARATOR
+
+### Test Case ID: TC_transactions_post_201
+- Endpoint: /transactions
+- Description: Verify successful creation of a transaction.
+- Preconditions: Ensure the transaction request contains valid data.
+- Request Data:
+    - Method: POST
+    - Headers: Content-Type: application/json
+    - Query Parameters: N/A
+    - Path Parameters: N/A
+    - Body Parameters: A valid transaction object with "id", "amount", and "type".
+- Expected Response:
+    - Status Code: 201
+    - Response Body: A success message indicating the transaction was created successfully.
+    - Headers: Content-Type: application/json
+- Validation Rules:
+    - Verify the response status code is 201.
+    - Verify the success message in the response body.
+- ChangeType: ADDED
+
+ROW_SEPARATOR
+
+## Your task:
+Using the above example as a reference, compare the provided Swagger files and existing test cases. Then update the test cases as needed. Include only the updated, added, or deleted test cases in your output. For unchanged test cases, mark them with "ChangeType: SAME" and provide their full details.
+""";
+
+
+// Gemini API configuration
+
+        String geminiApiKey = "AIzaSyDtjPcQ9ikOzehH1nEA7o3fFIWx-ISZDVo";
+        String geminiApiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=" + geminiApiKey;
+
+        // Prepare the request body
         Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", "gpt-3.5-turbo");
-        requestBody.put("messages", List.of(Map.of("role", "user", "content", prompt)));
-        requestBody.put("temperature", 0.0);
+        requestBody.put("contents", List.of(
+                Map.of("parts", List.of(Map.of("text", prompt)))
+        ));
 
+        // Set up headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        // Create the HTTP entity
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
-        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, new ParameterizedTypeReference<Map<String, Object>>() {
-        });
+        // Send the request
+        RestTemplate restTemplate = new RestTemplate();
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                geminiApiUrl,
+                HttpMethod.POST,
+                entity,
+                new ParameterizedTypeReference<>() {}
+        );
 
-        Map<String, Object> choices = (Map<String, Object>) ((List<?>) response.getBody().get("choices")).get(0);
-        String testCaseContent = (String) ((Map<String, Object>) choices.get("message")).get("content");
+        // https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent
+        // Handle the response
+        Map<String, Object> responseBody = response.getBody();
+
+// Extract the "candidates" list from the response
+        List<Map<String, Object>> candidates = (List<Map<String, Object>>) responseBody.get("candidates");
+
+// Ensure there is at least one candidate
+        if (candidates == null || candidates.isEmpty()) {
+            throw new RuntimeException("No candidates found in response.");
+        }
+
+// Extract the "content" from the first candidate
+        Map<String, Object> content = (Map<String, Object>) candidates.get(0).get("content");
+        if (content == null || content.isEmpty()) {
+            throw new RuntimeException("No content found in the first candidate.");
+        }
+
+// Extract the "parts" list from the content
+        List<Map<String, Object>> parts = (List<Map<String, Object>>) content.get("parts");
+        if (parts == null || parts.isEmpty()) {
+            throw new RuntimeException("No parts found in content.");
+        }
+
+// Extract the "text" field from the first part
+        String testCaseContent = (String) parts.get(0).get("text");
 
 
         List<String> testCasesList = splitTestCases(testCaseContent);
@@ -449,8 +627,8 @@ public class ChatGptService {
         return combinedList;
     }
 
-    public List<Map<String, String>> updateContractTestCases(String prCodeChanges, String swaggerFileName, String initialSwaggerContent) {
-        List<Map<String, String>> newTestCases = generateUpdatedContractTestCases(swaggerFileName, prCodeChanges, initialSwaggerContent);
+    public List<Map<String, String>> updateContractTestCases(String updatedSwaggerFile, String swaggerFileName, String initialSwaggerContent) {
+        List<Map<String, String>> newTestCases = generateUpdatedContractTestCases(swaggerFileName, updatedSwaggerFile, initialSwaggerContent);
         return newTestCases;
     }
 

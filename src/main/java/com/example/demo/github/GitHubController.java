@@ -298,14 +298,14 @@ public class GitHubController {
                 .orElseThrow(() -> new RuntimeException("PR not found"));
 
         // Step 3: Retrieve the code changes for the specified PR
-        String prCodeChanges = getPRCodeChanges(owner, repo_name, access_token, (Integer) targetPR.get("number"));
+        String updatedSwaggerFile = getPRCodeChanges(owner, repo_name, access_token, (Integer) targetPR.get("number"));
         // Step 4: Identify Swagger file name (assuming it's in the code changes or repository)
-        String swaggerFileName = findSwaggerFileName(prCodeChanges); // Custom method to locate Swagger file
+        String swaggerFileName = findSwaggerFileName(updatedSwaggerFile); // Custom method to locate Swagger file
 
         // Step 5: Retrieve the original Swagger file content (before changes)
         String swaggerContent = getOriginalSwaggerContent(owner, repo_name, access_token);
         // Step 6: Call the OpenAI service method to get updated contract test cases
-        List<Map<String, String>> updatedTestCases = chatGptService.updateContractTestCases(prCodeChanges, swaggerFileName, swaggerContent);
+        List<Map<String, String>> updatedTestCases = chatGptService.updateContractTestCases(updatedSwaggerFile, swaggerFileName, swaggerContent);
 
         // Step 7: Return the list of updated test cases
         return ResponseEntity.ok(updatedTestCases);
@@ -335,32 +335,62 @@ public class GitHubController {
     }
 
     private String getPRCodeChanges(String owner, String repo, String accessToken, int prNumber) {
-        String url = "https://api.github.com/repos/" + owner + "/" + repo + "/pulls/" + prNumber + "/files";
-
+        // Step 1: Fetch the PR metadata to get the source branch
+        String prUrl = "https://api.github.com/repos/" + owner + "/" + repo + "/pulls/" + prNumber;
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
 
         HttpEntity<String> requestEntity = new HttpEntity<>(headers);
 
-        ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
-                url, HttpMethod.GET, requestEntity, new ParameterizedTypeReference<List<Map<String, Object>>>() {}
+        ResponseEntity<Map<String, Object>> prResponse = restTemplate.exchange(
+                prUrl, HttpMethod.GET, requestEntity, new ParameterizedTypeReference<Map<String, Object>>() {}
         );
 
-        StringBuilder codeChanges = new StringBuilder();
+        if (prResponse.getBody() == null || !prResponse.getBody().containsKey("head")) {
+            throw new IllegalStateException("Unable to fetch PR metadata or source branch.");
+        }
 
-        if (response.getBody() != null) {
-            for (Map<String, Object> fileChange : response.getBody()) {
-                String patch = (String) fileChange.get("patch");
-                if (patch != null) {
-                    codeChanges.append(patch).append("\n");
+        String prBranch = (String) ((Map<String, Object>) prResponse.getBody().get("head")).get("ref");
+
+        // Step 2: Fetch the list of files changed in the PR
+        String filesUrl = "https://api.github.com/repos/" + owner + "/" + repo + "/pulls/" + prNumber + "/files";
+        ResponseEntity<List<Map<String, Object>>> filesResponse = restTemplate.exchange(
+                filesUrl, HttpMethod.GET, requestEntity, new ParameterizedTypeReference<List<Map<String, Object>>>() {}
+        );
+
+        if (filesResponse.getBody() == null || filesResponse.getBody().isEmpty()) {
+            throw new IllegalStateException("No files changed in the PR.");
+        }
+
+        StringBuilder fullChangedFilesContent = new StringBuilder();
+
+        // Step 3: Fetch the full content of each changed file from the PR branch
+        for (Map<String, Object> fileChange : filesResponse.getBody()) {
+            String filePath = (String) fileChange.get("filename");
+
+            String fileContentUrl = "https://api.github.com/repos/" + owner + "/" + repo + "/contents/" + filePath + "?ref=" + prBranch;
+            ResponseEntity<Map<String, Object>> fileContentResponse = restTemplate.exchange(
+                    fileContentUrl, HttpMethod.GET, requestEntity, new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+
+            if (fileContentResponse.getBody() != null) {
+                String encodedContent = (String) fileContentResponse.getBody().get("content");
+                try {
+                    // Clean and decode the Base64 content
+                    byte[] decodedBytes = Base64.getMimeDecoder().decode(encodedContent.replaceAll("\\s+", ""));
+                    String fileContent = new String(decodedBytes, StandardCharsets.UTF_8);
+
+                    fullChangedFilesContent.append("### File: ").append(filePath).append("\n")
+                            .append(fileContent).append("\n\n");
+                } catch (IllegalArgumentException e) {
+                    throw new IllegalStateException("Failed to decode Base64 content for file: " + filePath, e);
                 }
             }
         }
 
-        return codeChanges.toString();
+        return fullChangedFilesContent.toString();
     }
-
 
     private String findSwaggerFileName(String prCodeChanges) {
         // Common Swagger file names
